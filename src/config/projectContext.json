@@ -1,0 +1,54 @@
+{
+  "project": "Complete_Nexus_Agent",
+  "lastUpdated": "2026-04-15",
+  "frontend": {
+    "root": "client/",
+    "framework": "React 19 + Vite",
+    "baseURL_envKey": "VITE_API_URL",
+    "axiosBaseURLSetIn": "client/src/context/AppContext.jsx:5",
+    "tokenStorageKey": "localStorage['token']",
+    "chatStorageKey": "localStorage['nexus_chats']",
+    "chatIDField": "_id"
+  },
+  "backend": {
+    "root": "Nexus_Chat_Backend/",
+    "framework": "FastAPI + Supabase",
+    "basePrefix": "/v0/api",
+    "endpoints": {
+      "login":           "POST /v0/api/user/login",
+      "register":        "POST /v0/api/user/register",
+      "getUser":         "GET /v0/api/user",
+      "propertyEnquiry": "POST /v0/api/property_enquiry"
+    },
+    "authScheme": "Bearer JWT in Authorization header",
+    "propertyEnquiryAuth": "none — userId passed in request body"
+  },
+  "endpoint_mapping": {
+    "POST /api/chat/create":                      "REMOVED — localStorage only",
+    "GET  /api/chat/get":                         "REMOVED — localStorage only",
+    "POST /api/chat/delete":                      "REMOVED — localStorage only",
+    "GET  /api/user/data":                        "GET /user (relative to VITE_API_URL)",
+    "POST /api/message/property_recommendation":  "POST /property_enquiry",
+    "POST /api/message/image":                    "UNSUPPORTED — toast shown",
+    "GET  /api/community/image":                  "NO CHANGE — falls back to dummy data"
+  },
+  "filter_transforms": {
+    "filters.roomType → room_type": "key rename only",
+    "filters.lease → lease":        "strip 'w' suffix, parseInt; 'full_year' → 52",
+    "filters.intake → intake":      "'2025-26' → '01/09/2025' (01/09/YYYY format)"
+  },
+  "message_shape": {
+    "role":      "string ('user' | 'assistant')",
+    "content":   "string",
+    "timestamp": "number (Date.now())",
+    "isImage":   "boolean"
+  },
+  "notes": [
+    "FastAPI backend replaces Node/MongoDB backend",
+    "All FastAPI routes are under /v0/api prefix",
+    "Chat sessions are managed locally in localStorage (key: nexus_chats)",
+    "property_enquiry endpoint needs no auth header — userId in request body",
+    "User object from backend uses 'id' (not '_id')",
+    "crypto.randomUUID() used for chat IDs — no uuid npm package needed"
+  ]
+}
