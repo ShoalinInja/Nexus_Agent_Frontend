@@ -60,11 +60,13 @@ export const parseMoveInDate = (dateStr) => {
  * @param {object} params.filters         - {city, budget, university, roomType, intake, lease}
  * @returns {object} ready-to-POST body
  */
-export const buildChatPayload = ({ conversationId, message, filters = {} }) => {
+export const buildChatPayload = ({ conversationId, message, filters = {}, enquiryType }) => {
   const payload = {
     conversation_id: conversationId,
     message,
   };
+
+  if (enquiryType) payload.enquiry_type = enquiryType;
 
   if (filters.city)       payload.city       = filters.city;
   if (filters.university) payload.university = filters.university;

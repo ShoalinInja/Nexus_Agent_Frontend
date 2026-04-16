@@ -65,7 +65,11 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
 
       {/* Search */}
       <div className="flex items-center gap-2 p-3 mt-4 border border-gray-400 dark:border-white/20 rounded-md">
-        <img src={assets.search_icon} alt="Search" className="w-4 not-dark:invert" />
+        <img
+          src={assets.search_icon}
+          alt="Search"
+          className="w-4 not-dark:invert"
+        />
         <input
           onChange={(e) => setSearch(e.target.value)}
           value={search}
@@ -118,11 +122,18 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
 
       {/* Bottom Section */}
       <div
-        onClick={() => { navigate("/community"); setIsMenuOpen(false); }}
+        onClick={() => {
+          navigate("/community");
+          setIsMenuOpen(false);
+        }}
         className="flex items-center gap-2 p-3 mt-4 border border-gray-300
         dark:border-white/15 rounded-md cursor-pointer hover:scale-105 transition-all"
       >
-        <img src={assets.gallery_icon} alt="Gallery" className="w-4.5 not-dark:invert" />
+        <img
+          src={assets.gallery_icon}
+          alt="Gallery"
+          className="w-4.5 not-dark:invert"
+        />
         <p className="text-sm">Community Images</p>
       </div>
 
@@ -132,7 +143,11 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
         dark:border-white/15 rounded-md cursor-pointer hover:scale-105 transition-all"
       >
         <div className="flex items-center gap-2 text-sm">
-          <img src={assets.theme_icon} alt="Dark Mode Button" className="2-4 not-dark:invert" />
+          <img
+            src={assets.theme_icon}
+            alt="Dark Mode Button"
+            className="2-4 not-dark:invert"
+          />
           <p className="text-sm">Dark Mode</p>
         </div>
         <label className="relative inline-flex cursor-pointer">
@@ -152,7 +167,11 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
         className="flex items-center gap-3 p-3 mt-4 border border-gray-300
         dark:border-white/15 rounded-md cursor-pointer hover:scale-105 transition-all group"
       >
-        <img src={assets?.user_icon} alt="User Avatar" className="w-8 h-8 rounded-full" />
+        <img
+          src={assets?.user_icon}
+          alt="User Avatar"
+          className="w-8 h-8 rounded-full"
+        />
         <p className="flex-1 text-sm dark:text-primary truncate">
           {user ? user.name : "Login Your Account"}
         </p>

@@ -12,6 +12,13 @@ import {
   apiGetHistory,
 } from "../lib/api";
 
+// ─── Enquiry types ───────────────────────────────────────────────────────────
+const ENQUIRY_TYPES = [
+  { value: "property_recommendation", label: "Property Recommendation" },
+  { value: "sales_assist", label: "Sales Assist" },
+  { value: "general_question", label: "General Question" },
+];
+
 // ─── Filter data ──────────────────────────────────────────────────────────────
 const FILTER_OPTIONS = {
   city: [
@@ -137,17 +144,21 @@ const ChatBox = () => {
 
   const selectStyles = useMemo(() => buildSelectStyles(isDark), [isDark]);
 
-  const [messages, setMessages] = useState([]);
-  const [loading,  setLoading]  = useState(false);
-  const [prompt,   setPrompt]   = useState("");
-  const [filters,  setFilters]  = useState(
+  const [messages,    setMessages]    = useState([]);
+  const [loading,     setLoading]     = useState(false);
+  const [prompt,      setPrompt]      = useState("");
+  const [enquiryType, setEnquiryType] = useState("property_recommendation");
+  const [filters,     setFilters]     = useState(
     Object.fromEntries(FILTER_CONFIG.map((f) => [f.key, ""])),
   );
 
   const setFilter = (key, val) => setFilters((prev) => ({ ...prev, [key]: val }));
 
-  // Filters are only shown before the first message is sent
-  const showFilters = messages.length === 0;
+  // Enquiry type selector shown before first message (any type)
+  const isFirstMessage = messages.length === 0;
+
+  // Filters are only shown for property_recommendation before first message
+  const showFilters = isFirstMessage && enquiryType === "property_recommendation";
 
   // ── Render a single filter cell ──────────────────────────────────────────
   const renderFilter = (field) => {
@@ -254,9 +265,11 @@ const ChatBox = () => {
     if (!user) return toast.error("Login is required.");
     if (!selectedChat?.conversation_id) return toast.error("No conversation selected.");
 
+    // Validate mandatory fields for property_recommendation first message
     if (showFilters) {
-      if (!filters.city)   return toast.error("Please select a City before searching.");
-      if (!filters.budget) return toast.error("Please enter a Budget before searching.");
+      if (!filters.city)       return toast.error("Please select a City before searching.");
+      if (!filters.budget)     return toast.error("Please enter a Budget before searching.");
+      if (!filters.university) return toast.error("Please select a University before searching.");
     }
     if (!prompt.trim()) return toast.error("Please enter a message before sending.");
 
@@ -274,6 +287,7 @@ const ChatBox = () => {
         conversationId: selectedChat.conversation_id,
         message:        promptCopy,
         filters:        showFilters ? filters : {},
+        enquiryType:    isFirstMessage ? enquiryType : undefined,
       });
 
       const { data } = await apiSendMessage(axios, payload);
@@ -281,7 +295,7 @@ const ChatBox = () => {
       setMessages((prev) => [...prev, assistantMsg]);
 
       // Update the sidebar preview after the first message
-      if (showFilters) {
+      if (isFirstMessage) {
         updateConversationPreview(selectedChat.conversation_id, promptCopy.slice(0, 50));
       }
     } catch (error) {
@@ -331,7 +345,26 @@ const ChatBox = () => {
         className="bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F]/30
           rounded-xl w-full px-3 py-3 flex flex-col gap-3"
       >
-        {/* Row 1: Filters — visible only before the first message */}
+        {/* Row 0: Enquiry Type — visible before first message */}
+        {isFirstMessage && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 shrink-0">Type:</span>
+            <div className="w-64">
+              <Select
+                options={ENQUIRY_TYPES}
+                value={ENQUIRY_TYPES.find((o) => o.value === enquiryType) ?? ENQUIRY_TYPES[0]}
+                onChange={(opt) => setEnquiryType(opt ? opt.value : "property_recommendation")}
+                menuPlacement="auto"
+                menuPosition="fixed"
+                menuPortalTarget={document.body}
+                isSearchable={false}
+                styles={selectStyles}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Row 1: Filters — visible only for property_recommendation before first message */}
         {showFilters && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-7 gap-x-2 gap-y-1">
             {FILTER_CONFIG.map((field) => renderFilter(field))}
