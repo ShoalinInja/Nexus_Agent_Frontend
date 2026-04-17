@@ -19,91 +19,54 @@ const ENQUIRY_TYPES = [
   { value: "general_question", label: "General Question" },
 ];
 
-// ─── Filter data ──────────────────────────────────────────────────────────────
-const FILTER_OPTIONS = {
-  city: [
-    { value: "london", label: "London" },
-    { value: "manchester", label: "Manchester" },
-    { value: "birmingham", label: "Birmingham" },
-    { value: "leeds", label: "Leeds" },
-    { value: "sheffield", label: "Sheffield" },
-    { value: "edinburgh", label: "Edinburgh" },
-    { value: "bristol", label: "Bristol" },
-    { value: "nottingham", label: "Nottingham" },
-    { value: "newcastle", label: "Newcastle" },
-    { value: "cardiff", label: "Cardiff" },
-    { value: "liverpool", label: "Liverpool" },
-    { value: "glasgow", label: "Glasgow" },
-    { value: "coventry", label: "Coventry" },
-    { value: "southampton", label: "Southampton" },
-    { value: "leicester", label: "Leicester" },
-  ],
-  university: [
-    { value: "UCL", label: "UCL" },
-    { value: "Imperial College London", label: "Imperial College London" },
-    { value: "King's College London", label: "King's College London" },
-    { value: "University of Oxford", label: "University of Oxford" },
-    { value: "University of Cambridge", label: "University of Cambridge" },
-    { value: "University of Manchester", label: "University of Manchester" },
-    { value: "University of Birmingham", label: "University of Birmingham" },
-    { value: "University of Leeds", label: "University of Leeds" },
-    { value: "University of Sheffield", label: "University of Sheffield" },
-    { value: "University of Edinburgh", label: "University of Edinburgh" },
-    { value: "University of Bristol", label: "University of Bristol" },
-    { value: "University of Nottingham", label: "University of Nottingham" },
-    { value: "Newcastle University", label: "Newcastle University" },
-    { value: "Cardiff University", label: "Cardiff University" },
-    { value: "University of Liverpool", label: "University of Liverpool" },
-    { value: "University of Glasgow", label: "University of Glasgow" },
-    { value: "Coventry University", label: "Coventry University" },
-    { value: "De Montfort University", label: "De Montfort University" },
-  ],
-  roomType: [
-    { value: "ensuite", label: "Ensuite" },
-    { value: "premium_ensuite", label: "Premium Ensuite" },
-    { value: "studio", label: "Studio" },
-    { value: "standard", label: "Standard Room" },
-    { value: "shared", label: "Shared Room" },
-  ],
-  lease: [
-    { value: "43w", label: "43 Weeks" },
-    { value: "44w", label: "44 Weeks" },
-    { value: "47w", label: "47 Weeks" },
-    { value: "48w", label: "48 Weeks" },
-    { value: "51w", label: "51 Weeks" },
-    { value: "52w", label: "52 Weeks" },
-    { value: "full_year", label: "Full Year" },
-  ],
-};
+// ─── Room type options (static) ───────────────────────────────────────────────
+const ROOM_TYPE_OPTIONS = [
+  { value: "ENSUITE", label: "Ensuite" },
+  { value: "STUDIO", label: "Studio" },
+  { value: "NON_ENSUITE", label: "Non Ensuite" },
+  { value: "ONE_BED", label: "One Bed" },
+  { value: "THREE_BED", label: "Three Bed" },
+  { value: "TWO_BED", label: "Two Bed" },
+  { value: "SHARED_ROOM", label: "Shared Room" },
+  { value: "FIVE_PLUS_BED", label: "Five+ Bed" },
+  { value: "FOUR_BED", label: "Four Bed" },
+  { value: "TWIN_STUDIO", label: "Twin Studio" },
+  { value: "TWODIO", label: "Twodio" },
+  { value: "PRIVATE_ROOM", label: "Private Room" },
+  { value: "FIVE_BED", label: "Five Bed" },
+  { value: "TWIN_ENSUITE", label: "Twin Ensuite" },
+  { value: "ENTIRE_PLACE", label: "Entire Place" },
+  { value: "DORM", label: "Dorm" },
+];
 
+// ─── Filter field config (city & university options are dynamic) ──────────────
 const FILTER_CONFIG = [
-  {
-    key: "city",
-    type: "searchable",
-    options: FILTER_OPTIONS.city,
-    placeholder: "City",
-  },
+  { key: "city", type: "searchable-city", placeholder: "City" },
   { key: "budget", type: "number", placeholder: "Budget (£/week)" },
   {
     key: "university",
-    type: "searchable",
-    options: FILTER_OPTIONS.university,
+    type: "searchable-university",
     placeholder: "University",
   },
   {
     key: "roomType",
-    type: "searchable",
-    options: FILTER_OPTIONS.roomType,
+    type: "searchable-static",
+    options: ROOM_TYPE_OPTIONS,
     placeholder: "Room Type",
   },
   { key: "moveIn", type: "text", placeholder: "Move-in (DD-MM-YYYY)" },
-  {
-    key: "lease",
-    type: "searchable",
-    options: FILTER_OPTIONS.lease,
-    placeholder: "Lease",
-  },
+  { key: "lease", type: "integer", placeholder: "Lease (weeks)" },
 ];
+
+// ─── Default filter values ────────────────────────────────────────────────────
+const DEFAULT_FILTERS = {
+  city: "",
+  budget: "",
+  university: "",
+  roomType: "ENSUITE",
+  moveIn: "05-09-2026",
+  lease: "51",
+};
 
 // ─── react-select styles (theme-aware, borderless control) ────────────────────
 const buildSelectStyles = (isDark) => ({
@@ -188,26 +151,101 @@ const ChatBox = () => {
 
   const selectStyles = useMemo(() => buildSelectStyles(isDark), [isDark]);
 
+  // ── Chat state ────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [enquiryType, setEnquiryType] = useState("property_recommendation");
-  const [filters, setFilters] = useState(
-    Object.fromEntries(FILTER_CONFIG.map((f) => [f.key, ""])),
-  );
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+  // ── University data state ─────────────────────────────────────────────────
+  const [uniData, setUniData] = useState([]); // raw API rows
+  const [uniLoading, setUniLoading] = useState(true);
+  const [uniError, setUniError] = useState(false);
 
   const setFilter = (key, val) =>
     setFilters((prev) => ({ ...prev, [key]: val }));
 
+  // ── Fetch universities on mount ───────────────────────────────────────────
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        setUniLoading(true);
+        setUniError(false);
+        const { data } = await axios.get("/universities");
+        const rows = data.universities || [];
+        setUniData(rows);
+        console.log(`[UNIVERSITIES LOADED] ${rows.length} entries`);
+      } catch (err) {
+        console.error("[UNIVERSITIES] Failed to load:", err);
+        setUniError(true);
+      } finally {
+        setUniLoading(false);
+      }
+    };
+    fetchUniversities();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Derived city options (unique, sorted A–Z) ─────────────────────────────
+  const cityOptions = useMemo(() => {
+    const seen = new Set();
+    const opts = [];
+    for (const row of uniData) {
+      const city = row.city;
+      if (city && !seen.has(city)) {
+        seen.add(city);
+        opts.push({ value: city, label: city });
+      }
+    }
+    return opts.sort((a, b) => a.label.localeCompare(b.label));
+  }, [uniData]);
+
+  // ── Derived university options (filtered by selected city) ────────────────
+  const universityOptions = useMemo(() => {
+    const selectedCity = filters.city;
+    const filtered = selectedCity
+      ? uniData.filter((row) => row.city === selectedCity)
+      : uniData;
+
+    const seen = new Set();
+    const opts = [];
+    for (const row of filtered) {
+      const uni = row.university;
+      if (uni && !seen.has(uni)) {
+        seen.add(uni);
+        opts.push({ value: uni, label: uni });
+      }
+    }
+
+    console.log(
+      `[CITY FILTER] City: ${selectedCity || "(all)"} → ${opts.length} universities shown`,
+    );
+    return opts.sort((a, b) => a.label.localeCompare(b.label));
+  }, [uniData, filters.city]);
+
+  // ── Clear university when city changes and current uni no longer valid ────
+  useEffect(() => {
+    if (filters.university && filters.city) {
+      const stillValid = uniData.some(
+        (row) =>
+          row.city === filters.city && row.university === filters.university,
+      );
+      if (!stillValid) {
+        setFilter("university", "");
+      }
+    }
+  }, [filters.city]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Enquiry type selector shown before first message (any type)
   const isFirstMessage = messages.length === 0;
 
-  // Filters are only shown for property_recommendation before first message
+  // Filters shown only for property_recommendation before first message
   const showFilters =
     isFirstMessage && enquiryType === "property_recommendation";
 
   // ── Render a single filter cell ──────────────────────────────────────────
   const renderFilter = (field) => {
+    // Plain number input (budget)
     if (field.type === "number") {
       return (
         <input
@@ -217,11 +255,38 @@ const ChatBox = () => {
           value={filters[field.key]}
           onChange={(e) => setFilter(field.key, e.target.value)}
           placeholder={field.placeholder}
-          className="w-full text-sm px-4 bg-transparent outline-none border-none placeholder-gray-400"
+          className="w-full text-sm px-4 bg-transparent outline-none border-none placeholder-gray-400
+            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
+            [&::-webkit-inner-spin-button]:appearance-none"
         />
       );
     }
 
+    // Integer input (lease) — no decimals
+    if (field.type === "integer") {
+      return (
+        <input
+          key={field.key}
+          type="number"
+          min={1}
+          step={1}
+          value={filters[field.key]}
+          onChange={(e) => {
+            const val = e.target.value;
+            // Strip decimals — only allow whole numbers
+            if (val === "" || /^\d+$/.test(val)) {
+              setFilter(field.key, val);
+            }
+          }}
+          placeholder={field.placeholder}
+          className="w-full text-sm px-4 bg-transparent outline-none border-none placeholder-gray-400
+            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
+            [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      );
+    }
+
+    // Free text input (moveIn)
     if (field.type === "text") {
       return (
         <input
@@ -235,6 +300,60 @@ const ChatBox = () => {
       );
     }
 
+    // Dynamic city dropdown (from API)
+    if (field.type === "searchable-city") {
+      return (
+        <Select
+          key={field.key}
+          options={uniLoading ? [] : cityOptions}
+          value={cityOptions.find((o) => o.value === filters.city) ?? null}
+          onChange={(opt) => setFilter("city", opt ? opt.value : "")}
+          placeholder={
+            uniLoading
+              ? "Loading..."
+              : uniError
+                ? "Failed to load"
+                : field.placeholder
+          }
+          menuPlacement="auto"
+          menuPosition="fixed"
+          menuPortalTarget={document.body}
+          isClearable
+          isLoading={uniLoading}
+          styles={selectStyles}
+        />
+      );
+    }
+
+    // Dynamic university dropdown (filtered by city)
+    if (field.type === "searchable-university") {
+      return (
+        <Select
+          key={field.key}
+          options={uniLoading ? [] : universityOptions}
+          value={
+            universityOptions.find((o) => o.value === filters.university) ??
+            null
+          }
+          onChange={(opt) => setFilter("university", opt ? opt.value : "")}
+          placeholder={
+            uniLoading
+              ? "Loading..."
+              : uniError
+                ? "Failed to load"
+                : field.placeholder
+          }
+          menuPlacement="auto"
+          menuPosition="fixed"
+          menuPortalTarget={document.body}
+          isClearable
+          isLoading={uniLoading}
+          styles={selectStyles}
+        />
+      );
+    }
+
+    // Static searchable dropdown (roomType)
     return (
       <Select
         key={field.key}
@@ -253,7 +372,7 @@ const ChatBox = () => {
     );
   };
 
-  // Auto-resize textarea
+  // ── Auto-resize textarea ─────────────────────────────────────────────────
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -281,7 +400,6 @@ const ChatBox = () => {
           axios,
           selectedChat.conversation_id,
         );
-        // Convert backend message shape to frontend shape
         const msgs = (data.messages || []).map((m) => ({
           role: m.role,
           content: m.content,
@@ -295,9 +413,9 @@ const ChatBox = () => {
     };
 
     loadHistory();
-  }, [selectedChat?.conversation_id]);
+  }, [selectedChat?.conversation_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to latest message
+  // ── Scroll to latest message ─────────────────────────────────────────────
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTo({
