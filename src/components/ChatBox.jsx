@@ -17,54 +17,62 @@ import {
 // ─── Enquiry types ────────────────────────────────────────────────────────────
 const ENQUIRY_TYPES = [
   { value: "property_recommendation", label: "Property Recommendation" },
-  { value: "sales_assist",            label: "Sales Assist"            },
-  { value: "general_question",        label: "General Question"        },
+  { value: "sales_assist", label: "Sales Assist" },
+  { value: "general_question", label: "General Question" },
 ];
 
 // ─── Room type options + fast label lookup ────────────────────────────────────
 const ROOM_TYPE_OPTIONS = [
-  { value: "ENSUITE",       label: "Ensuite"      },
-  { value: "STUDIO",        label: "Studio"       },
-  { value: "NON_ENSUITE",   label: "Non Ensuite"  },
-  { value: "ONE_BED",       label: "One Bed"      },
-  { value: "TWO_BED",       label: "Two Bed"      },
-  { value: "THREE_BED",     label: "Three Bed"    },
-  { value: "FOUR_BED",      label: "Four Bed"     },
-  { value: "FIVE_BED",      label: "Five Bed"     },
-  { value: "FIVE_PLUS_BED", label: "Five+ Bed"    },
-  { value: "SHARED_ROOM",   label: "Shared Room"  },
-  { value: "PRIVATE_ROOM",  label: "Private Room" },
-  { value: "TWIN_STUDIO",   label: "Twin Studio"  },
-  { value: "TWIN_ENSUITE",  label: "Twin Ensuite" },
-  { value: "TWODIO",        label: "Twodio"       },
-  { value: "ENTIRE_PLACE",  label: "Entire Place" },
-  { value: "DORM",          label: "Dorm"         },
+  { value: "ENSUITE", label: "Ensuite" },
+  { value: "STUDIO", label: "Studio" },
+  { value: "NON_ENSUITE", label: "Non Ensuite" },
+  { value: "ONE_BED", label: "One Bed" },
+  { value: "TWO_BED", label: "Two Bed" },
+  { value: "THREE_BED", label: "Three Bed" },
+  { value: "FOUR_BED", label: "Four Bed" },
+  { value: "FIVE_BED", label: "Five Bed" },
+  { value: "FIVE_PLUS_BED", label: "Five+ Bed" },
+  { value: "SHARED_ROOM", label: "Shared Room" },
+  { value: "PRIVATE_ROOM", label: "Private Room" },
+  { value: "TWIN_STUDIO", label: "Twin Studio" },
+  { value: "TWIN_ENSUITE", label: "Twin Ensuite" },
+  { value: "TWODIO", label: "Twodio" },
+  { value: "ENTIRE_PLACE", label: "Entire Place" },
+  { value: "DORM", label: "Dorm" },
 ];
 
 // value → human label (e.g. "ENSUITE" → "Ensuite")
 const ROOM_TYPE_LABEL = Object.fromEntries(
-  ROOM_TYPE_OPTIONS.map((o) => [o.value, o.label])
+  ROOM_TYPE_OPTIONS.map((o) => [o.value, o.label]),
 );
 
 // ─── Filter field config (city & university options are dynamic) ──────────────
 const FILTER_CONFIG = [
-  { key: "city",      type: "searchable-city",       placeholder: "City"               },
-  { key: "budget",    type: "number",                placeholder: "Budget (£/week)"    },
-  { key: "university",type: "searchable-university", placeholder: "University"         },
-  { key: "roomType",  type: "searchable-static",
-    options: ROOM_TYPE_OPTIONS,                       placeholder: "Room Type"          },
-  { key: "moveIn",    type: "text",                  placeholder: "Move-in (DD-MM-YYYY)"},
-  { key: "lease",     type: "integer",               placeholder: "Lease (weeks)"      },
+  { key: "city", type: "searchable-city", placeholder: "City" },
+  { key: "budget", type: "number", placeholder: "Budget (£/week)" },
+  {
+    key: "university",
+    type: "searchable-university",
+    placeholder: "University",
+  },
+  {
+    key: "roomType",
+    type: "searchable-static",
+    options: ROOM_TYPE_OPTIONS,
+    placeholder: "Room Type",
+  },
+  { key: "moveIn", type: "text", placeholder: "Move-in (DD-MM-YYYY)" },
+  { key: "lease", type: "integer", placeholder: "Lease (weeks)" },
 ];
 
 // ─── Default filter values ────────────────────────────────────────────────────
 const DEFAULT_FILTERS = {
-  city:       "",
-  budget:     "",
+  city: "",
+  budget: "",
   university: "",
-  roomType:   "ENSUITE",
-  moveIn:     "05-09-2026",
-  lease:      "51",
+  roomType: "ENSUITE",
+  moveIn: "05-09-2026",
+  lease: "51",
 };
 
 /**
@@ -72,14 +80,12 @@ const DEFAULT_FILTERS = {
  * Used when restoring a conversation from the sidebar.
  */
 const backendToFrontendFilters = (bf = {}) => ({
-  city:       bf.city                                        || "",
-  budget:     bf.budget       != null ? String(bf.budget)   : "",
-  university: bf.university                                  || "",
-  roomType:   bf.room_type                                   || "ENSUITE",
-  moveIn:     bf.intake                                      || "05-09-2026",
-  lease:      bf.lease        != null
-                ? String(Math.round(bf.lease))
-                : "51",
+  city: bf.city || "",
+  budget: bf.budget != null ? String(bf.budget) : "",
+  university: bf.university || "",
+  roomType: bf.room_type || "ENSUITE",
+  moveIn: bf.intake || "05-09-2026",
+  lease: bf.lease != null ? String(Math.round(bf.lease)) : "51",
 });
 
 // ─── react-select styles (theme-aware, borderless control) ────────────────────
@@ -87,27 +93,52 @@ const buildSelectStyles = (isDark) => ({
   menuPortal: (base) => ({ ...base, zIndex: 9999 }),
   control: (base) => ({
     ...base,
-    background:  "transparent",
-    border:      "none",
-    boxShadow:   "none",
-    minHeight:   "unset",
-    cursor:      "pointer",
+    background: "transparent",
+    border: "none",
+    boxShadow: "none",
+    minHeight: "unset",
+    cursor: "pointer",
   }),
-  valueContainer:     (base) => ({ ...base, padding: 0 }),
-  input:              (base) => ({ ...base, margin: 0, padding: 0, fontSize: "0.875rem", color: "inherit" }),
-  singleValue:        (base) => ({ ...base, color: "inherit", fontSize: "0.875rem" }),
-  placeholder:        (base) => ({ ...base, color: "rgb(156,163,175)", fontSize: "0.875rem", margin: 0 }),
-  indicatorsContainer:(base) => ({ ...base, padding: 0 }),
-  indicatorSeparator: ()     => ({ display: "none" }),
-  dropdownIndicator:  (base) => ({ ...base, padding: "0 2px", color: "inherit", opacity: 0.4 }),
-  clearIndicator:     (base) => ({ ...base, padding: "0 2px", color: "inherit", opacity: 0.4 }),
+  valueContainer: (base) => ({ ...base, padding: 0 }),
+  input: (base) => ({
+    ...base,
+    margin: 0,
+    padding: 0,
+    fontSize: "0.875rem",
+    color: "inherit",
+  }),
+  singleValue: (base) => ({ ...base, color: "inherit", fontSize: "0.875rem" }),
+  placeholder: (base) => ({
+    ...base,
+    color: "rgb(156,163,175)",
+    fontSize: "0.875rem",
+    margin: 0,
+  }),
+  indicatorsContainer: (base) => ({ ...base, padding: 0 }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    padding: "0 2px",
+    color: "inherit",
+    opacity: 0.4,
+  }),
+  clearIndicator: (base) => ({
+    ...base,
+    padding: "0 2px",
+    color: "inherit",
+    opacity: 0.4,
+  }),
   menu: (base) => ({
     ...base,
-    background:    isDark ? "#1e1035" : "#ffffff",
-    borderRadius:  "0.625rem",
-    border:        isDark ? "1px solid rgba(128,96,159,0.25)" : "1px solid rgba(0,0,0,0.08)",
-    boxShadow:     isDark ? "0 12px 40px rgba(0,0,0,0.5)"    : "0 8px 24px rgba(0,0,0,0.12)",
-    marginTop:  "6px",
+    background: isDark ? "#1e1035" : "#ffffff",
+    borderRadius: "0.625rem",
+    border: isDark
+      ? "1px solid rgba(128,96,159,0.25)"
+      : "1px solid rgba(0,0,0,0.08)",
+    boxShadow: isDark
+      ? "0 12px 40px rgba(0,0,0,0.5)"
+      : "0 8px 24px rgba(0,0,0,0.12)",
+    marginTop: "6px",
     marginBottom: "6px",
     overflow: "hidden",
   }),
@@ -115,21 +146,25 @@ const buildSelectStyles = (isDark) => ({
   option: (base, { isFocused, isSelected }) => ({
     ...base,
     background: isSelected
-      ? isDark ? "rgba(128,96,159,0.35)" : "rgba(128,96,159,0.18)"
+      ? isDark
+        ? "rgba(128,96,159,0.35)"
+        : "rgba(128,96,159,0.18)"
       : isFocused
-        ? isDark ? "rgba(128,96,159,0.18)" : "rgba(128,96,159,0.08)"
+        ? isDark
+          ? "rgba(128,96,159,0.18)"
+          : "rgba(128,96,159,0.08)"
         : "transparent",
-    color:     isDark ? "#e2d9f3" : "#1a1a2e",
-    fontSize:  "0.875rem",
-    padding:   "7px 12px",
-    cursor:    "pointer",
+    color: isDark ? "#e2d9f3" : "#1a1a2e",
+    fontSize: "0.875rem",
+    padding: "7px 12px",
+    cursor: "pointer",
   }),
 });
 
 // ─── ChatBox ──────────────────────────────────────────────────────────────────
 const ChatBox = () => {
   const containerRef = useRef(null);
-  const textareaRef  = useRef(null);
+  const textareaRef = useRef(null);
   const { selectedChat, theme, user, axios, updateConversationPreview } =
     useAppContext();
   const isDark = theme === "dark";
@@ -137,21 +172,21 @@ const ChatBox = () => {
   const selectStyles = useMemo(() => buildSelectStyles(isDark), [isDark]);
 
   // ── Chat state ──────────────────────────────────────────────────────────────
-  const [messages,             setMessages]             = useState([]);
-  const [loading,              setLoading]              = useState(false);
-  const [prompt,               setPrompt]               = useState("");
-  const [enquiryType,          setEnquiryType]          = useState("property_recommendation");
-  const [filters,              setFilters]              = useState(DEFAULT_FILTERS);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [enquiryType, setEnquiryType] = useState("property_recommendation");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
   // Requirements card state
-  const [submittedFilters,     setSubmittedFilters]     = useState(null);  // null = not yet submitted
-  const [editingRequirements,  setEditingRequirements]  = useState(false); // true = filter row visible
-  const [savingFilters,        setSavingFilters]        = useState(false);
+  const [submittedFilters, setSubmittedFilters] = useState(null); // null = not yet submitted
+  const [editingRequirements, setEditingRequirements] = useState(false); // true = filter row visible
+  const [savingFilters, setSavingFilters] = useState(false);
 
   // ── University data state ───────────────────────────────────────────────────
-  const [uniData,    setUniData]    = useState([]);
+  const [uniData, setUniData] = useState([]);
   const [uniLoading, setUniLoading] = useState(true);
-  const [uniError,   setUniError]   = useState(false);
+  const [uniError, setUniError] = useState(false);
 
   const setFilter = (key, val) =>
     setFilters((prev) => ({ ...prev, [key]: val }));
@@ -193,7 +228,9 @@ const ChatBox = () => {
   // ── Derived university options (filtered by selected city) ─────────────────
   const universityOptions = useMemo(() => {
     const selectedCity = filters.city;
-    const filtered     = selectedCity ? uniData.filter((r) => r.city === selectedCity) : uniData;
+    const filtered = selectedCity
+      ? uniData.filter((r) => r.city === selectedCity)
+      : uniData;
     const seen = new Set();
     const opts = [];
     for (const row of filtered) {
@@ -210,7 +247,7 @@ const ChatBox = () => {
   useEffect(() => {
     if (filters.university && filters.city) {
       const stillValid = uniData.some(
-        (r) => r.city === filters.city && r.university === filters.university
+        (r) => r.city === filters.city && r.university === filters.university,
       );
       if (!stillValid) setFilter("university", "");
     }
@@ -219,8 +256,9 @@ const ChatBox = () => {
   // ── Derived conditions ──────────────────────────────────────────────────────
   const isFirstMessage = messages.length === 0;
   // Show filter row: first message (property type) OR actively editing requirements
-  const showFilters     = isFirstMessage && enquiryType === "property_recommendation";
-  const showFilterRow   = showFilters || editingRequirements;
+  const showFilters =
+    isFirstMessage && enquiryType === "property_recommendation";
+  const showFilterRow = showFilters || editingRequirements;
 
   // ── Load chat history when conversation is selected ─────────────────────────
   useEffect(() => {
@@ -235,9 +273,9 @@ const ChatBox = () => {
     setEditingRequirements(false);
 
     // Restore filter controls from stored DB filters (available synchronously)
-    const storedFilters     = selectedChat.filters || {};
-    const hasStoredFilters  = Object.keys(storedFilters).length > 0;
-    const restoredFilters   = hasStoredFilters
+    const storedFilters = selectedChat.filters || {};
+    const hasStoredFilters = Object.keys(storedFilters).length > 0;
+    const restoredFilters = hasStoredFilters
       ? backendToFrontendFilters(storedFilters)
       : DEFAULT_FILTERS;
 
@@ -245,12 +283,15 @@ const ChatBox = () => {
 
     const loadHistory = async () => {
       try {
-        const { data } = await apiGetHistory(axios, selectedChat.conversation_id);
+        const { data } = await apiGetHistory(
+          axios,
+          selectedChat.conversation_id,
+        );
         const msgs = (data.messages || []).map((m) => ({
-          role:      m.role,
-          content:   m.content,
+          role: m.role,
+          content: m.content,
           timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
-          isImage:   false,
+          isImage: false,
         }));
         setMessages(msgs);
 
@@ -327,7 +368,13 @@ const ChatBox = () => {
           options={uniLoading ? [] : cityOptions}
           value={cityOptions.find((o) => o.value === filters.city) ?? null}
           onChange={(opt) => setFilter("city", opt ? opt.value : "")}
-          placeholder={uniLoading ? "Loading..." : uniError ? "Failed to load" : field.placeholder}
+          placeholder={
+            uniLoading
+              ? "Loading..."
+              : uniError
+                ? "Failed to load"
+                : field.placeholder
+          }
           menuPlacement="auto"
           menuPosition="fixed"
           menuPortalTarget={document.body}
@@ -343,9 +390,18 @@ const ChatBox = () => {
         <Select
           key={field.key}
           options={uniLoading ? [] : universityOptions}
-          value={universityOptions.find((o) => o.value === filters.university) ?? null}
+          value={
+            universityOptions.find((o) => o.value === filters.university) ??
+            null
+          }
           onChange={(opt) => setFilter("university", opt ? opt.value : "")}
-          placeholder={uniLoading ? "Loading..." : uniError ? "Failed to load" : field.placeholder}
+          placeholder={
+            uniLoading
+              ? "Loading..."
+              : uniError
+                ? "Failed to load"
+                : field.placeholder
+          }
           menuPlacement="auto"
           menuPosition="fixed"
           menuPortalTarget={document.body}
@@ -361,7 +417,9 @@ const ChatBox = () => {
       <Select
         key={field.key}
         options={field.options}
-        value={field.options.find((o) => o.value === filters[field.key]) ?? null}
+        value={
+          field.options.find((o) => o.value === filters[field.key]) ?? null
+        }
         onChange={(opt) => setFilter(field.key, opt ? opt.value : "")}
         placeholder={field.placeholder}
         menuPlacement="auto"
@@ -392,7 +450,7 @@ const ChatBox = () => {
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTo({
-        top:      containerRef.current.scrollHeight,
+        top: containerRef.current.scrollHeight,
         behavior: "smooth",
       });
     }
@@ -405,7 +463,7 @@ const ChatBox = () => {
       await apiPatchFilters(
         axios,
         selectedChat.conversation_id,
-        buildFiltersPatch(filters)
+        buildFiltersPatch(filters),
       );
       setSubmittedFilters({ ...filters });
       setEditingRequirements(false);
@@ -427,11 +485,15 @@ const ChatBox = () => {
 
     // Validate mandatory fields for property_recommendation first message
     if (showFilters) {
-      if (!filters.city)       return toast.error("Please select a City before searching.");
-      if (!filters.budget)     return toast.error("Please enter a Budget before searching.");
-      if (!filters.university) return toast.error("Please select a University before searching.");
+      if (!filters.city)
+        return toast.error("Please select a City before searching.");
+      if (!filters.budget)
+        return toast.error("Please enter a Budget before searching.");
+      if (!filters.university)
+        return toast.error("Please select a University before searching.");
     }
-    if (!prompt.trim()) return toast.error("Please enter a message before sending.");
+    if (!prompt.trim())
+      return toast.error("Please enter a message before sending.");
 
     const promptCopy = prompt;
     setPrompt("");
@@ -453,22 +515,22 @@ const ChatBox = () => {
 
       const payload = buildChatPayload({
         conversationId: selectedChat.conversation_id,
-        message:        promptCopy,
+        message: promptCopy,
         // Top-level filter fields — only on the first message (so backend saves them)
-        filters:        showFilters ? filters : {},
-        enquiryType:    isFirstMessage ? enquiryType : undefined,
+        filters: showFilters ? filters : {},
+        enquiryType: isFirstMessage ? enquiryType : undefined,
         // Always send current dropdown state for drift detection
         currentFilters: filters,
       });
 
-      const { data }  = await apiSendMessage(axios, payload);
+      const { data } = await apiSendMessage(axios, payload);
       const assistantMsg = buildAssistantMessage(data.reply);
       setMessages((prev) => [...prev, assistantMsg]);
 
       if (isFirstMessage) {
         updateConversationPreview(
           selectedChat.conversation_id,
-          promptCopy.slice(0, 50)
+          promptCopy.slice(0, 50),
         );
       }
     } catch (error) {
@@ -482,10 +544,12 @@ const ChatBox = () => {
   // ── Requirements card pills ─────────────────────────────────────────────────
   const requirementPills = submittedFilters
     ? [
-        { label: "City",      value: submittedFilters.city },
+        { label: "City", value: submittedFilters.city },
         {
           label: "Budget",
-          value: submittedFilters.budget ? `£${submittedFilters.budget}/wk` : "",
+          value: submittedFilters.budget
+            ? `£${submittedFilters.budget}/wk`
+            : "",
         },
         { label: "University", value: submittedFilters.university },
         {
@@ -506,44 +570,57 @@ const ChatBox = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col justify-between m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
-
       {/* ── Requirements Navbar — sticky, lives OUTSIDE the scroll container ── */}
       {submittedFilters && requirementPills.length > 0 && (
         <div
           className={`flex-shrink-0 flex items-center gap-3 mb-2 px-4 py-2.5 rounded-xl border transition-colors
-            ${isDark
-              ? "bg-[#1a0f2e]/80 border-[#80609F]/25 backdrop-blur-sm"
-              : "bg-white/80        border-[#80609F]/15 backdrop-blur-sm shadow-sm"
+            ${
+              isDark
+                ? "bg-[#1a0f2e]/80 border-[#80609F]/25 backdrop-blur-sm"
+                : "bg-white/80        border-[#80609F]/15 backdrop-blur-sm shadow-sm"
             }`}
         >
           {/* Left: label */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`} />
+            <div
+              className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`}
+            />
             <span
               className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
                 ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
             >
-              Requirements
+              Requisite
             </span>
           </div>
 
           {/* Divider */}
-          <div className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`} />
+          <div
+            className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`}
+          />
 
           {/* Center: pills — scrollable row, no wrapping */}
-          <div className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
-            [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div
+            className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
+            [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          >
             {requirementPills.map((pill) => (
               <span
                 key={pill.label}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0
-                  ${isDark
-                    ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
-                    : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
+                  ${
+                    isDark
+                      ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
+                      : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
                   }`}
               >
-                <span className={isDark ? "text-gray-500" : "text-gray-400"}>{pill.label}</span>
-                <span className={isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"}>·</span>
+                <span className={isDark ? "text-gray-500" : "text-gray-400"}>
+                  {pill.label}
+                </span>
+                <span
+                  className={isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"}
+                >
+                  ·
+                </span>
                 <span className="font-medium">{pill.value}</span>
               </span>
             ))}
@@ -554,13 +631,14 @@ const ChatBox = () => {
             type="button"
             onClick={() => setEditingRequirements((p) => !p)}
             className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all
-              ${editingRequirements
-                ? isDark
-                  ? "bg-[#80609F]/30 text-[#d4bbf0]"
-                  : "bg-[#80609F]/15 text-[#80609F] font-medium"
-                : isDark
-                  ? "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
+              ${
+                editingRequirements
+                  ? isDark
+                    ? "bg-[#80609F]/30 text-[#d4bbf0]"
+                    : "bg-[#80609F]/15 text-[#80609F] font-medium"
+                  : isDark
+                    ? "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                    : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
               }`}
           >
             {editingRequirements ? "✕ Cancel" : "✏ Edit"}
