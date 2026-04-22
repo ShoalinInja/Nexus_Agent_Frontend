@@ -57,10 +57,21 @@ export const parseMoveInDate = (dateStr) => {
  * @param {object} params
  * @param {string} params.conversationId  - UUID from backend
  * @param {string} params.message         - raw user message string
- * @param {object} params.filters         - {city, budget, university, roomType, intake, lease}
+ * @param {object} params.filters         - {city, budget, university, roomType, moveIn, lease}
+ *                                          Sent as top-level fields on the first message.
+ * @param {string} [params.enquiryType]   - only sent on the first message
+ * @param {object} [params.currentFilters] - full dropdown state on every follow-up message.
+ *                                          Backend compares this against stored filters to
+ *                                          detect drift and force a supply refresh.
  * @returns {object} ready-to-POST body
  */
-export const buildChatPayload = ({ conversationId, message, filters = {}, enquiryType }) => {
+export const buildChatPayload = ({
+  conversationId,
+  message,
+  filters = {},
+  enquiryType,
+  currentFilters,
+}) => {
   const payload = {
     conversation_id: conversationId,
     message,
@@ -68,6 +79,7 @@ export const buildChatPayload = ({ conversationId, message, filters = {}, enquir
 
   if (enquiryType) payload.enquiry_type = enquiryType;
 
+  // Top-level filter fields (first message or explicit overrides)
   if (filters.city)       payload.city       = filters.city;
   if (filters.university) payload.university = filters.university;
   if (filters.budget)     payload.budget     = parseFloat(filters.budget);
@@ -76,12 +88,47 @@ export const buildChatPayload = ({ conversationId, message, filters = {}, enquir
   const lease = parseLeaseWeeks(filters.lease);
   if (lease !== undefined) payload.lease = lease;
 
-  // moveIn is a free-text date field (DD-MM-YYYY / YYYY-MM-DD)
-  // Backend retrieval_service normalizes it to YYYY-MM-DD for Supabase
   const moveIn = parseMoveInDate(filters.moveIn);
   if (moveIn !== undefined) payload.intake = moveIn;
 
+  // current_filters — sent on every request so the backend can detect
+  // drift between the frontend dropdown state and the stored DB filters.
+  // Uses backend snake_case key names.
+  if (currentFilters) {
+    const cf = {};
+    if (currentFilters.city)       cf.city       = currentFilters.city;
+    if (currentFilters.university) cf.university = currentFilters.university;
+    if (currentFilters.budget)     cf.budget     = parseFloat(currentFilters.budget);
+    if (currentFilters.roomType)   cf.room_type  = currentFilters.roomType;
+    const cfLease = parseLeaseWeeks(currentFilters.lease);
+    if (cfLease !== undefined)     cf.lease      = cfLease;
+    const cfMoveIn = parseMoveInDate(currentFilters.moveIn);
+    if (cfMoveIn !== undefined)    cf.intake     = cfMoveIn;
+    if (Object.keys(cf).length)    payload.current_filters = cf;
+  }
+
   return payload;
+};
+
+// -----------------------------------------------------------------
+// 3b. Build the PATCH /conversation/{id}/filters request body
+// -----------------------------------------------------------------
+
+/**
+ * Maps frontend filter state (camelCase) to backend snake_case PATCH body.
+ * Only includes fields that have a non-empty value.
+ */
+export const buildFiltersPatch = (filters = {}) => {
+  const patch = {};
+  if (filters.city)       patch.city       = filters.city;
+  if (filters.university) patch.university = filters.university;
+  if (filters.budget)     patch.budget     = parseFloat(filters.budget);
+  if (filters.roomType)   patch.room_type  = filters.roomType;
+  const lease = parseLeaseWeeks(filters.lease);
+  if (lease !== undefined) patch.lease     = lease;
+  const moveIn = parseMoveInDate(filters.moveIn);
+  if (moveIn !== undefined) patch.intake   = moveIn;
+  return patch;
 };
 
 // -----------------------------------------------------------------
@@ -129,3 +176,9 @@ export const apiSendMessage = (axios, payload) =>
 
 export const apiGetHistory = (axios, conversationId) =>
   axios.get(`/chat/history?conversation_id=${conversationId}`);
+
+export const apiGetFilters = (axios, conversationId) =>
+  axios.get(`/conversation/${conversationId}/filters`);
+
+export const apiPatchFilters = (axios, conversationId, patchBody) =>
+  axios.patch(`/conversation/${conversationId}/filters`, patchBody);
