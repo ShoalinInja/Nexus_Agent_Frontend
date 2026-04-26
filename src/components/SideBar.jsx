@@ -33,10 +33,34 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
     toast.success("Chat deleted");
   };
 
+  const truncateText = (text, limit) => {
+    if (!text) return "";
+    return text.length > limit ? text.slice(0, limit) + "..." : text;
+  };
+
   const filteredChats = chats.filter((chat) => {
-    const searchText = search.toLowerCase();
-    const preview = chat?.preview?.toLowerCase() || "";
-    return preview.includes(searchText);
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+
+    // A. Preview match
+    if ((chat?.preview || "").toLowerCase().includes(q)) return true;
+
+    // B. Messages match — any message content contains the query
+    const messages = Array.isArray(chat?.messages) ? chat.messages : [];
+    if (messages.some((m) => (m?.content || "").toLowerCase().includes(q))) return true;
+
+    // C. Filter fields match
+    const f = chat?.filters || {};
+    const filterStrings = [f.city, f.university, f.room_type]
+      .filter(Boolean)
+      .map((v) => v.toLowerCase());
+    if (filterStrings.some((v) => v.includes(q))) return true;
+
+    // D. Numeric budget match — "200" matches filters.budget === 200
+    const asNumber = parseFloat(q);
+    if (!isNaN(asNumber) && f.budget != null && parseFloat(f.budget) === asNumber) return true;
+
+    return false;
   });
 
   return (
@@ -102,8 +126,8 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
             hover:bg-[#57317C]/20 ${selectedChat?.conversation_id === chat.conversation_id ? "bg-[#57317C]/20" : ""}`}
           >
             <div className="w-full">
-              <p className="truncate w-full">
-                {chat?.preview || "New conversation"}
+              <p title={chat?.preview || "New conversation"} className="text-sm">
+                {truncateText(chat?.preview || "New conversation", 20)}
               </p>
               <p className="text-xs text-gray-500 dark:text-[#B1A6C0]">
                 {chat?.updated_at ? moment(chat.updated_at).fromNow() : ""}
@@ -172,8 +196,10 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
           alt="User Avatar"
           className="w-8 h-8 rounded-full"
         />
-        <p className="flex-1 text-sm dark:text-primary truncate">
-          {user ? user.name : "Login Your Account"}
+        <p className="flex-1 text-sm dark:text-primary">
+          {user
+            ? `${(user.name ?? "").slice(0, 5)} (${user.credits ?? 0})`
+            : "Login Your Account"}
         </p>
         {user && (
           <img

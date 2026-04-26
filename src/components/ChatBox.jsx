@@ -165,7 +165,7 @@ const buildSelectStyles = (isDark) => ({
 const ChatBox = () => {
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
-  const { selectedChat, theme, user, axios, updateConversationPreview } =
+  const { selectedChat, theme, user, setUser, axios, updateConversationPreview } =
     useAppContext();
   const isDark = theme === "dark";
 
@@ -527,6 +527,11 @@ const ChatBox = () => {
       const assistantMsg = buildAssistantMessage(data.reply);
       setMessages((prev) => [...prev, assistantMsg]);
 
+      // Sync credits from the response so the sidebar updates immediately
+      if (data.credits_remaining != null) {
+        setUser((prev) => ({ ...prev, credits: data.credits_remaining }));
+      }
+
       if (isFirstMessage) {
         updateConversationPreview(
           selectedChat.conversation_id,
@@ -739,6 +744,7 @@ const ChatBox = () => {
               ref={textareaRef}
               rows={1}
               value={prompt}
+              maxLength={250}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Type your prompt..."
