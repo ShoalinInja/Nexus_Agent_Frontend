@@ -171,31 +171,41 @@ const listVariants = {
 
 // Individual message — slides up + fades in on mount, fades out on removal
 const msgVariants = {
-  hidden:  { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0,  transition: { duration: 0.22, ease: "easeOut" } },
-  exit:    { opacity: 0,        transition: { duration: 0.12 } },
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.22, ease: "easeOut" },
+  },
+  exit: { opacity: 0, transition: { duration: 0.12 } },
 };
 
 // Requirements navbar — slides down from top
 const navbarVariants = {
-  hidden:  { opacity: 0, y: -10 },
-  visible: { opacity: 1, y: 0,  transition: { duration: 0.2,  ease: "easeOut" } },
-  exit:    { opacity: 0, y: -10, transition: { duration: 0.15 } },
+  hidden: { opacity: 0, y: -10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
 };
 
 // Empty state — gentle fade
 const emptyVariants = {
-  hidden:  { opacity: 0 },
+  hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.35, ease: "easeOut" } },
-  exit:    { opacity: 0, transition: { duration: 0.15 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
 };
 
 // ─── ChatBox ──────────────────────────────────────────────────────────────────
 const ChatBox = () => {
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
-  const { selectedChat, theme, user, setUser, axios, updateConversationPreview } =
-    useAppContext();
+  const {
+    selectedChat,
+    theme,
+    user,
+    setUser,
+    axios,
+    updateConversationPreview,
+  } = useAppContext();
   const isDark = theme === "dark";
 
   const selectStyles = useMemo(() => buildSelectStyles(isDark), [isDark]);
@@ -604,7 +614,6 @@ const ChatBox = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col min-h-0 m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
-
       {/* ── Requirements Navbar (animated, outside scroll area) ─────────────── */}
       <AnimatePresence>
         {submittedFilters && requirementPills.length > 0 && (
@@ -615,37 +624,55 @@ const ChatBox = () => {
             animate="visible"
             exit="exit"
             className={`flex-shrink-0 flex items-center gap-3 mb-2 px-4 py-2.5 rounded-xl border
-              ${isDark
-                ? "bg-[#1a0f2e]/80 border-[#80609F]/25 backdrop-blur-sm"
-                : "bg-white/80     border-[#80609F]/15 backdrop-blur-sm shadow-sm"
+              ${
+                isDark
+                  ? "bg-[#1a0f2e]/80 border-[#80609F]/25 backdrop-blur-sm"
+                  : "bg-white/80     border-[#80609F]/15 backdrop-blur-sm shadow-sm"
               }`}
           >
             {/* Left: label */}
             <div className="flex items-center gap-2 shrink-0">
-              <div className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`} />
-              <span className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
-                ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}>
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`}
+              />
+              <span
+                className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
+                ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
+              >
                 Requirements
               </span>
             </div>
 
             {/* Divider */}
-            <div className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`} />
+            <div
+              className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`}
+            />
 
             {/* Center: pills — scrollable row */}
-            <div className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
-              [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div
+              className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
+              [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            >
               {requirementPills.map((pill) => (
                 <span
                   key={pill.label}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0
-                    ${isDark
-                      ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
-                      : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
+                    ${
+                      isDark
+                        ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
+                        : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
                     }`}
                 >
-                  <span className={isDark ? "text-gray-500" : "text-gray-400"}>{pill.label}</span>
-                  <span className={isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"}>·</span>
+                  <span className={isDark ? "text-gray-500" : "text-gray-400"}>
+                    {pill.label}
+                  </span>
+                  <span
+                    className={
+                      isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"
+                    }
+                  >
+                    ·
+                  </span>
                   <span className="font-medium">{pill.value}</span>
                 </span>
               ))}
@@ -658,9 +685,14 @@ const ChatBox = () => {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors
-                ${editingRequirements
-                  ? isDark ? "bg-[#80609F]/30 text-[#d4bbf0]" : "bg-[#80609F]/15 text-[#80609F] font-medium"
-                  : isDark ? "text-gray-500 hover:text-gray-300 hover:bg-white/5" : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
+                ${
+                  editingRequirements
+                    ? isDark
+                      ? "bg-[#80609F]/30 text-[#d4bbf0]"
+                      : "bg-[#80609F]/15 text-[#80609F] font-medium"
+                    : isDark
+                      ? "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                      : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
                 }`}
             >
               {editingRequirements ? "✕ Cancel" : "✏ Edit"}
@@ -696,7 +728,7 @@ const ChatBox = () => {
             <motion.div
               key="message-list"
               variants={listVariants}
-              initial="visible"      // skip stagger on chat-switch (already animated in)
+              initial="visible" // skip stagger on chat-switch (already animated in)
               animate="visible"
               className="flex flex-col gap-2"
             >
@@ -731,7 +763,12 @@ const ChatBox = () => {
                         key={i}
                         className="w-1.5 h-1.5 rounded-full bg-gray-500"
                         animate={{ y: [0, -4, 0] }}
-                        transition={{ repeat: Infinity, duration: 0.6, delay, ease: "easeInOut" }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.6,
+                          delay,
+                          ease: "easeInOut",
+                        }}
                       />
                     ))}
                   </motion.div>
@@ -782,8 +819,13 @@ const ChatBox = () => {
               <div className="w-52">
                 <Select
                   options={ENQUIRY_TYPES}
-                  value={ENQUIRY_TYPES.find((o) => o.value === enquiryType) ?? ENQUIRY_TYPES[0]}
-                  onChange={(opt) => setEnquiryType(opt ? opt.value : "property_recommendation")}
+                  value={
+                    ENQUIRY_TYPES.find((o) => o.value === enquiryType) ??
+                    ENQUIRY_TYPES[0]
+                  }
+                  onChange={(opt) =>
+                    setEnquiryType(opt ? opt.value : "property_recommendation")
+                  }
                   menuPlacement="auto"
                   menuPosition="fixed"
                   menuPortalTarget={document.body}
@@ -794,18 +836,16 @@ const ChatBox = () => {
             </div>
           )}
 
-          <div className="flex-1">
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={prompt}
-              maxLength={250}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Type your prompt..."
-              className="w-full text-sm outline-none bg-transparent border-none resize-none overflow-hidden leading-5 py-1"
-            />
-          </div>
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={prompt}
+            maxLength={2000}
+            onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
+            onKeyDown={onKeyDown}
+            placeholder="Type your prompt..."
+            className="w-full text-sm outline-none bg-transparent border-none resize-none overflow-hidden leading-5 py-1"
+          />
 
           <motion.button
             type="submit"
