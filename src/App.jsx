@@ -22,17 +22,27 @@ const App = () => {
     <>
       <Toaster />
       {user ? (
-        <div className="dark:bg-gradient-to-b from-[#242124] to-[#000000] dark:text-white">
+        <div className="flex h-screen w-screen overflow-hidden dark:bg-gradient-to-b from-[#242124] to-[#000000] dark:text-white">
+          {/* Mobile hamburger — fixed, only shown when sidebar is closed */}
           {!isMenuOpen && (
             <img
               src={assets.menu_icon}
-              className="absolute top-3 left-3 
-    w-8 h-8 cursor-pointer md:hidden not-dark:invert"
+              className="fixed top-3 left-3 z-50 w-8 h-8 cursor-pointer md:hidden not-dark:invert"
               onClick={() => setIsMenuOpen(true)}
             />
           )}
-          <div className="flex h-screen w-screen">
+
+          {/*
+            Sidebar wrapper:
+            - Desktop: md:w-[22%] flex-shrink-0 → sidebar is a real flex child, takes 22% width
+            - Mobile:  no width (sidebar is fixed/out-of-flow), collapses to 0 automatically
+          */}
+          <div className="md:w-[22%] md:flex-shrink-0 h-full">
             <SideBar isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+          </div>
+
+          {/* Chat area — fills exact remaining space, no margin needed */}
+          <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
             <Routes>
               <Route path="/" element={<ChatBox />} />
               {/* <Route path="/credits" element={<Credits />} /> */}

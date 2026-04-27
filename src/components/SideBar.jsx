@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
 import moment from "moment";
@@ -18,6 +18,13 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
     deleteChat,
   } = useAppContext();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce: only update the query used for filtering 300ms after typing stops
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -38,37 +45,57 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
     return text.length > limit ? text.slice(0, limit) + "..." : text;
   };
 
-  const filteredChats = chats.filter((chat) => {
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
+  const filteredChats = (() => {
+    const q = debouncedSearch.toLowerCase().trim();
 
-    // A. Preview match
-    if ((chat?.preview || "").toLowerCase().includes(q)) return true;
+    // No query — return all chats in their natural order
+    if (!q) return chats;
 
-    // B. Messages match — any message content contains the query
-    const messages = Array.isArray(chat?.messages) ? chat.messages : [];
-    if (messages.some((m) => (m?.content || "").toLowerCase().includes(q))) return true;
-
-    // C. Filter fields match
-    const f = chat?.filters || {};
-    const filterStrings = [f.city, f.university, f.room_type]
-      .filter(Boolean)
-      .map((v) => v.toLowerCase());
-    if (filterStrings.some((v) => v.includes(q))) return true;
-
-    // D. Numeric budget match — "200" matches filters.budget === 200
     const asNumber = parseFloat(q);
-    if (!isNaN(asNumber) && f.budget != null && parseFloat(f.budget) === asNumber) return true;
 
-    return false;
-  });
+    const scored = chats.map((chat) => {
+      const f = chat?.filters || {};
+      const messages = Array.isArray(chat?.messages) ? chat.messages : [];
+      let score = 0;
+
+      // +3  preview contains query
+      if ((chat?.preview || "").toLowerCase().includes(q)) score += 3;
+
+      // +4  structured filter field (city / university / room_type) contains query
+      const filterStrings = [f.city, f.university, f.room_type]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+      if (filterStrings.some((v) => v.includes(q))) score += 4;
+
+      // +2  budget — exact numeric match OR string contains query
+      if (f.budget != null) {
+        const budgetStr = String(f.budget);
+        if (budgetStr.includes(q)) score += 2;
+        if (!isNaN(asNumber) && parseFloat(f.budget) === asNumber) score += 2;
+      }
+
+      // +1  any message content contains query
+      if (messages.some((m) => (m?.content || "").toLowerCase().includes(q)))
+        score += 1;
+
+      return { chat, score };
+    });
+
+    return scored
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ chat }) => chat);
+  })();
 
   return (
     <div
-      className={`flex flex-col h-screen w-full md:w-[20%] p-5
+      className={`flex flex-col p-5
       dark:bg-gradient-to-b from-[#242124]/30 to-[#000000]/30
       border-r border-[#80609F]/30 backdrop-blur-3xl
-      transition-all duration-500 max-md:absolute left-0 z-1 ${!isMenuOpen && "max-md:-translate-x-full"}`}
+      fixed left-0 top-0 h-screen w-[75%] z-40
+      md:relative md:h-full md:w-full
+      transition-transform duration-300
+      ${isMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
     >
       {/* Logo */}
       <img
@@ -126,7 +153,10 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
             hover:bg-[#57317C]/20 ${selectedChat?.conversation_id === chat.conversation_id ? "bg-[#57317C]/20" : ""}`}
           >
             <div className="w-full">
-              <p title={chat?.preview || "New conversation"} className="text-sm">
+              <p
+                title={chat?.preview || "New conversation"}
+                className="text-sm"
+              >
                 {truncateText(chat?.preview || "New conversation", 20)}
               </p>
               <p className="text-xs text-gray-500 dark:text-[#B1A6C0]">

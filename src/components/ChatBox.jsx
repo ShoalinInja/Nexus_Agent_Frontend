@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import Select from "react-select";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
 import Message from "../components/Message";
@@ -160,6 +161,34 @@ const buildSelectStyles = (isDark) => ({
     cursor: "pointer",
   }),
 });
+
+// ─── Animation variants ───────────────────────────────────────────────────────
+
+// Stagger container — orchestrates children entry delay
+const listVariants = {
+  visible: { transition: { staggerChildren: 0.04 } },
+};
+
+// Individual message — slides up + fades in on mount, fades out on removal
+const msgVariants = {
+  hidden:  { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0,  transition: { duration: 0.22, ease: "easeOut" } },
+  exit:    { opacity: 0,        transition: { duration: 0.12 } },
+};
+
+// Requirements navbar — slides down from top
+const navbarVariants = {
+  hidden:  { opacity: 0, y: -10 },
+  visible: { opacity: 1, y: 0,  transition: { duration: 0.2,  ease: "easeOut" } },
+  exit:    { opacity: 0, y: -10, transition: { duration: 0.15 } },
+};
+
+// Empty state — gentle fade
+const emptyVariants = {
+  hidden:  { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.35, ease: "easeOut" } },
+  exit:    { opacity: 0, transition: { duration: 0.15 } },
+};
 
 // ─── ChatBox ──────────────────────────────────────────────────────────────────
 const ChatBox = () => {
@@ -574,120 +603,152 @@ const ChatBox = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col justify-between m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
-      {/* ── Requirements Navbar — sticky, lives OUTSIDE the scroll container ── */}
-      {submittedFilters && requirementPills.length > 0 && (
-        <div
-          className={`flex-shrink-0 flex items-center gap-3 mb-2 px-4 py-2.5 rounded-xl border transition-colors
-            ${
-              isDark
+    <div className="flex-1 flex flex-col min-h-0 m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
+
+      {/* ── Requirements Navbar (animated, outside scroll area) ─────────────── */}
+      <AnimatePresence>
+        {submittedFilters && requirementPills.length > 0 && (
+          <motion.div
+            key="req-navbar"
+            variants={navbarVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className={`flex-shrink-0 flex items-center gap-3 mb-2 px-4 py-2.5 rounded-xl border
+              ${isDark
                 ? "bg-[#1a0f2e]/80 border-[#80609F]/25 backdrop-blur-sm"
-                : "bg-white/80        border-[#80609F]/15 backdrop-blur-sm shadow-sm"
-            }`}
-        >
-          {/* Left: label */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div
-              className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`}
-            />
-            <span
-              className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
-                ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
-            >
-              Requisite
-            </span>
-          </div>
-
-          {/* Divider */}
-          <div
-            className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`}
-          />
-
-          {/* Center: pills — scrollable row, no wrapping */}
-          <div
-            className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
-            [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-          >
-            {requirementPills.map((pill) => (
-              <span
-                key={pill.label}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0
-                  ${
-                    isDark
-                      ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
-                      : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
-                  }`}
-              >
-                <span className={isDark ? "text-gray-500" : "text-gray-400"}>
-                  {pill.label}
-                </span>
-                <span
-                  className={isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"}
-                >
-                  ·
-                </span>
-                <span className="font-medium">{pill.value}</span>
-              </span>
-            ))}
-          </div>
-
-          {/* Right: Edit toggle */}
-          <button
-            type="button"
-            onClick={() => setEditingRequirements((p) => !p)}
-            className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all
-              ${
-                editingRequirements
-                  ? isDark
-                    ? "bg-[#80609F]/30 text-[#d4bbf0]"
-                    : "bg-[#80609F]/15 text-[#80609F] font-medium"
-                  : isDark
-                    ? "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                    : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
+                : "bg-white/80     border-[#80609F]/15 backdrop-blur-sm shadow-sm"
               }`}
           >
-            {editingRequirements ? "✕ Cancel" : "✏ Edit"}
-          </button>
-        </div>
-      )}
+            {/* Left: label */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`} />
+              <span className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
+                ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}>
+                Requirements
+              </span>
+            </div>
 
-      {/* Chat Messages */}
-      <div ref={containerRef} className="flex-1 mb-3 overflow-y-auto">
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-2 text-primary">
-            <img
-              src={isDark ? assets.logo_full : assets.logo_full_dark}
-              className="w-full max-w-56 md:max-w-68"
-              alt="logo"
-            />
-            <p className="mt-5 text-4xl sm:text-6xl text-center text-gray-400">
-              Ask Me Anything
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {messages.map((message, index) => (
-              <Message key={index} message={message} />
-            ))}
+            {/* Divider */}
+            <div className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`} />
 
-            {loading && (
-              <div className="flex items-center gap-1.5 ml-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" />
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" />
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" />
-              </div>
-            )}
-          </div>
+            {/* Center: pills — scrollable row */}
+            <div className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
+              [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {requirementPills.map((pill) => (
+                <span
+                  key={pill.label}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0
+                    ${isDark
+                      ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
+                      : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
+                    }`}
+                >
+                  <span className={isDark ? "text-gray-500" : "text-gray-400"}>{pill.label}</span>
+                  <span className={isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"}>·</span>
+                  <span className="font-medium">{pill.value}</span>
+                </span>
+              ))}
+            </div>
+
+            {/* Right: Edit toggle */}
+            <motion.button
+              type="button"
+              onClick={() => setEditingRequirements((p) => !p)}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors
+                ${editingRequirements
+                  ? isDark ? "bg-[#80609F]/30 text-[#d4bbf0]" : "bg-[#80609F]/15 text-[#80609F] font-medium"
+                  : isDark ? "text-gray-500 hover:text-gray-300 hover:bg-white/5" : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
+                }`}
+            >
+              {editingRequirements ? "✕ Cancel" : "✏ Edit"}
+            </motion.button>
+          </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* ── Messages area (flex-1 + min-h-0 = correct scroll without overflow) ── */}
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto mb-3">
+        <AnimatePresence mode="wait">
+          {messages.length === 0 ? (
+            /* Empty state — centered, fades in */
+            <motion.div
+              key="empty-state"
+              variants={emptyVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="h-full flex flex-col items-center justify-center gap-2 text-primary"
+            >
+              <img
+                src={isDark ? assets.logo_full : assets.logo_full_dark}
+                className="w-full max-w-56 md:max-w-68"
+                alt="logo"
+              />
+              <p className="mt-5 text-4xl sm:text-6xl text-center text-gray-400">
+                Ask Me Anything
+              </p>
+            </motion.div>
+          ) : (
+            /* Messages list — staggered entry */
+            <motion.div
+              key="message-list"
+              variants={listVariants}
+              initial="visible"      // skip stagger on chat-switch (already animated in)
+              animate="visible"
+              className="flex flex-col gap-2"
+            >
+              <AnimatePresence initial={false}>
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={`${message.timestamp}-${index}`}
+                    variants={msgVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    layout="position"
+                  >
+                    <Message message={message} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {/* Typing indicator */}
+              <AnimatePresence>
+                {loading && (
+                  <motion.div
+                    key="typing"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex items-center gap-1.5 ml-2 py-1"
+                  >
+                    {[0, 0.15, 0.3].map((delay, i) => (
+                      <motion.div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-gray-500"
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{ repeat: Infinity, duration: 0.6, delay, ease: "easeInOut" }}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Prompt Box */}
+      {/* ── Prompt Box (flex-shrink-0 keeps it pinned at the bottom always) ─── */}
       <form
         onSubmit={onSubmit}
-        className="bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F]/30
+        className="flex-shrink-0 bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F]/30
           rounded-xl w-full px-4 py-3 flex flex-col gap-3"
       >
-        {/* Filter row — shown on first message OR when editing requirements */}
+        {/* Filter row — first message OR editing requirements */}
         {showFilterRow && (
           <div className="w-full flex items-center gap-1 px-2">
             {FILTER_CONFIG.map((field) => (
@@ -696,38 +757,33 @@ const ChatBox = () => {
               </div>
             ))}
 
-            {/* "Apply" button — only in edit mode (not first message) */}
             {editingRequirements && (
-              <button
+              <motion.button
                 type="button"
                 onClick={handleApplyFilters}
                 disabled={savingFilters}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 className="shrink-0 flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg
                   bg-[#80609F] hover:bg-[#6d4e8a] active:bg-[#5d3f77]
                   text-white font-medium transition-colors
                   disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {savingFilters ? "…" : "Apply ✓"}
-              </button>
+              </motion.button>
             )}
           </div>
         )}
 
         {/* Message input row */}
         <div className="flex items-center gap-3">
-          {/* Left: Enquiry Type (first message only) */}
           {isFirstMessage && (
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-52">
                 <Select
                   options={ENQUIRY_TYPES}
-                  value={
-                    ENQUIRY_TYPES.find((o) => o.value === enquiryType) ??
-                    ENQUIRY_TYPES[0]
-                  }
-                  onChange={(opt) =>
-                    setEnquiryType(opt ? opt.value : "property_recommendation")
-                  }
+                  value={ENQUIRY_TYPES.find((o) => o.value === enquiryType) ?? ENQUIRY_TYPES[0]}
+                  onChange={(opt) => setEnquiryType(opt ? opt.value : "property_recommendation")}
                   menuPlacement="auto"
                   menuPosition="fixed"
                   menuPortalTarget={document.body}
@@ -738,7 +794,6 @@ const ChatBox = () => {
             </div>
           )}
 
-          {/* Center: Textarea */}
           <div className="flex-1">
             <textarea
               ref={textareaRef}
@@ -752,10 +807,11 @@ const ChatBox = () => {
             />
           </div>
 
-          {/* Right: Submit */}
-          <button
+          <motion.button
             type="submit"
             disabled={loading}
+            whileHover={{ scale: loading ? 1 : 1.08 }}
+            whileTap={{ scale: loading ? 1 : 0.93 }}
             className="shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <img
@@ -763,7 +819,7 @@ const ChatBox = () => {
               className="w-8"
               alt="send"
             />
-          </button>
+          </motion.button>
         </div>
       </form>
     </div>
