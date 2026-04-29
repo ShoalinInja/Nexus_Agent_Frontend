@@ -213,6 +213,7 @@ const ChatBox = () => {
   // ── Chat state ──────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false); // true once first token arrives
   const [prompt, setPrompt] = useState("");
   const [enquiryType, setEnquiryType] = useState("property_recommendation");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -486,14 +487,15 @@ const ChatBox = () => {
   };
 
   // ── Scroll to latest message ────────────────────────────────────────────────
+  // Use instant scroll during streaming (smooth causes jitter with rapid updates)
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTo({
         top: containerRef.current.scrollHeight,
-        behavior: "smooth",
+        behavior: isStreaming ? "instant" : "smooth",
       });
     }
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   // ── Apply filter changes ("Done" button without sending a message) ──────────
   const handleApplyFilters = async () => {
@@ -514,7 +516,7 @@ const ChatBox = () => {
     }
   };
 
-  // ── Submit handler ──────────────────────────────────────────────────────────
+  // ── Submit handler — SSE streaming ──────────────────────────────────────────
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
@@ -534,53 +536,167 @@ const ChatBox = () => {
     if (!prompt.trim())
       return toast.error("Please enter a message before sending.");
 
+    // Capture snapshot of values that may change during async work
     const promptCopy = prompt;
+    const wasFirstMessage = isFirstMessage;
     setPrompt("");
 
-    // Optimistically render user message
+    // ── Optimistically render user message ────────────────────────────────
     const userMsg = buildUserMessage(promptCopy);
     setMessages((prev) => [...prev, userMsg]);
 
-    // Capture filter snapshot when first message is sent or when editing requirements
-    if (showFilters || editingRequirements) {
-      setSubmittedFilters({ ...filters });
-    }
-    if (editingRequirements) {
-      setEditingRequirements(false);
-    }
+    // Capture filter snapshot
+    if (showFilters || editingRequirements) setSubmittedFilters({ ...filters });
+    if (editingRequirements) setEditingRequirements(false);
+
+    // ── Add empty placeholder for assistant (filled by stream) ────────────
+    const placeholderMsg = buildAssistantMessage("");
+    setMessages((prev) => [...prev, placeholderMsg]);
+
+    setLoading(true);
+
+    const payload = buildChatPayload({
+      conversationId: selectedChat.conversation_id,
+      message: promptCopy,
+      filters: showFilters ? filters : {},
+      enquiryType: wasFirstMessage ? enquiryType : undefined,
+      currentFilters: filters,
+    });
+
+    const authToken = localStorage.getItem("token");
+    const baseUrl = axios.defaults.baseURL;
+
+    let partialReply = "";
+    let streamErrored = false;
 
     try {
-      setLoading(true);
-
-      const payload = buildChatPayload({
-        conversationId: selectedChat.conversation_id,
-        message: promptCopy,
-        // Top-level filter fields — only on the first message (so backend saves them)
-        filters: showFilters ? filters : {},
-        enquiryType: isFirstMessage ? enquiryType : undefined,
-        // Always send current dropdown state for drift detection
-        currentFilters: filters,
+      const res = await fetch(`${baseUrl}/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
       });
 
-      const { data } = await apiSendMessage(axios, payload);
-      const assistantMsg = buildAssistantMessage(data.reply);
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      // Sync credits from the response so the sidebar updates immediately
-      if (data.credits_remaining != null) {
-        setUser((prev) => ({ ...prev, credits: data.credits_remaining }));
+      // Non-2xx before stream opens — parse error and bail
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = errBody.detail || `Request failed (${res.status})`;
+        toast.error(msg);
+        setMessages((prev) => prev.filter((m) => m !== userMsg && m !== placeholderMsg));
+        return;
       }
 
-      if (isFirstMessage) {
-        updateConversationPreview(
-          selectedChat.conversation_id,
-          promptCopy.slice(0, 50),
-        );
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Split on double-newline (SSE event boundary), keep incomplete tail
+        const events = buffer.split("\n\n");
+        buffer = events.pop(); // last element may be incomplete
+
+        for (const event of events) {
+          const line = event.trim();
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+
+          // End of stream
+          if (raw === "[DONE]") return;
+
+          let parsed;
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+
+          // ── Token ───────────────────────────────────────────────────────
+          if (parsed.token != null) {
+            if (!isStreaming) setIsStreaming(true);
+            partialReply += parsed.token;
+            const captured = partialReply;
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                content: captured,
+              };
+              return updated;
+            });
+          }
+
+          // ── Stream error from backend ────────────────────────────────────
+          if (parsed.error) {
+            streamErrored = true;
+            toast.error(parsed.error);
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                interrupted: true,
+              };
+              return updated;
+            });
+            return;
+          }
+
+          // ── Metadata event (credits, data_fetched, etc.) ─────────────────
+          if (parsed.type === "meta") {
+            if (parsed.credits_remaining != null) {
+              setUser((prev) => ({ ...prev, credits: parsed.credits_remaining }));
+            }
+            if (wasFirstMessage) {
+              updateConversationPreview(
+                selectedChat.conversation_id,
+                promptCopy.slice(0, 50),
+              );
+            }
+          }
+        }
       }
-    } catch (error) {
-      toast.error(error.response?.data?.detail || error.message);
-      setMessages((prev) => prev.filter((m) => m !== userMsg));
+
+      // Reader closed before [DONE] — treat as interrupted if we have content
+      if (partialReply && !streamErrored) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            interrupted: true,
+          };
+          return updated;
+        });
+      }
+    } catch (err) {
+      // Network / fetch error
+      if (!streamErrored) {
+        if (partialReply) {
+          // Keep what was streamed, mark as interrupted
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              interrupted: true,
+            };
+            return updated;
+          });
+        } else {
+          // Nothing received — roll back both messages
+          toast.error("Connection lost. Please try again.");
+          setMessages((prev) =>
+            prev.filter((m) => m !== userMsg && m !== placeholderMsg),
+          );
+        }
+      }
     } finally {
+      setIsStreaming(false);
       setLoading(false);
     }
   };
@@ -639,7 +755,7 @@ const ChatBox = () => {
                 className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
                 ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
               >
-                Requirements
+                Requisite
               </span>
             </div>
 
@@ -733,23 +849,47 @@ const ChatBox = () => {
               className="flex flex-col gap-2"
             >
               <AnimatePresence initial={false}>
-                {messages.map((message, index) => (
-                  <motion.div
-                    key={`${message.timestamp}-${index}`}
-                    variants={msgVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    layout="position"
-                  >
-                    <Message message={message} />
-                  </motion.div>
-                ))}
+                {messages.map((message, index) => {
+                  const isLast = index === messages.length - 1;
+                  const showCursor =
+                    isStreaming && isLast && message.role === "assistant";
+                  return (
+                    <motion.div
+                      key={`${message.timestamp}-${index}`}
+                      variants={msgVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      layout="position"
+                    >
+                      <Message message={message} />
+
+                      {/* Blinking cursor — inline after last streaming token */}
+                      {showCursor && (
+                        <motion.span
+                          animate={{ opacity: [1, 0, 1] }}
+                          transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }}
+                          className={`inline-block ml-0.5 -mb-0.5 text-base leading-none select-none
+                            ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
+                        >
+                          ▍
+                        </motion.span>
+                      )}
+
+                      {/* Interrupted notice — muted, below the message */}
+                      {message.interrupted && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 italic pl-1">
+                          response interrupted
+                        </p>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
 
-              {/* Typing indicator */}
+              {/* Typing dots — only while waiting for the first token (not during stream) */}
               <AnimatePresence>
-                {loading && (
+                {loading && !isStreaming && (
                   <motion.div
                     key="typing"
                     initial={{ opacity: 0, y: 6 }}
@@ -841,10 +981,18 @@ const ChatBox = () => {
             rows={1}
             value={prompt}
             maxLength={2000}
+            disabled={loading}
             onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
             onKeyDown={onKeyDown}
-            placeholder="Type your prompt..."
-            className="w-full text-sm outline-none bg-transparent border-none resize-none overflow-hidden leading-5 py-1"
+            placeholder={
+              isStreaming
+                ? "Receiving response…"
+                : loading
+                  ? "Processing…"
+                  : "Type your prompt..."
+            }
+            className="w-full text-sm outline-none bg-transparent border-none resize-none overflow-hidden leading-5 py-1
+              disabled:opacity-60 disabled:cursor-not-allowed"
           />
 
           <motion.button
