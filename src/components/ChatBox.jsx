@@ -18,8 +18,9 @@ import {
 // ─── Enquiry types ────────────────────────────────────────────────────────────
 const ENQUIRY_TYPES = [
   { value: "property_recommendation", label: "Property Recommendation" },
-  { value: "sales_assist", label: "Sales Assist" },
-  { value: "general_question", label: "General Question" },
+  { value: "property_connoisseur",    label: "Property Connoisseur"    },
+  { value: "sales_assist",            label: "Sales Assist"            },
+  { value: "general_question",        label: "General Question"        },
 ];
 
 // ─── Room type options + fast label lookup ────────────────────────────────────
@@ -198,6 +199,10 @@ const emptyVariants = {
 const ChatBox = () => {
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
+  // Prevents loadHistory from resetting submittedFilters mid-submission
+  const isSubmittingRef = useRef(false);
+  // Tracks whether the stream has started so setIsStreaming(true) only fires once
+  const streamingStartedRef = useRef(false);
   const {
     selectedChat,
     theme,
@@ -295,10 +300,20 @@ const ChatBox = () => {
 
   // ── Derived conditions ──────────────────────────────────────────────────────
   const isFirstMessage = messages.length === 0;
-  // Show filter row: first message (property type) OR actively editing requirements
+
+  // submittedFilters === null means "this conversation has no stored filters yet"
+  // (null on fresh chats; set to a snapshot as soon as filters are submitted/restored)
+  const filtersNotYetSet = submittedFilters === null;
+
+  // Show filter dropdowns only when:
+  //   • property_recommendation is active, AND
+  //   • no filters stored for this conversation yet  (OR user clicked Edit to modify them)
   const showFilters =
-    isFirstMessage && enquiryType === "property_recommendation";
-  const showFilterRow = showFilters || editingRequirements;
+    enquiryType === "property_recommendation" &&
+    (filtersNotYetSet || editingRequirements);
+
+  // True when the Connoisseur agent is selected (no filters needed)
+  const isConnoisseur = enquiryType === "property_connoisseur";
 
   // ── Load chat history when conversation is selected ─────────────────────────
   useEffect(() => {
@@ -335,15 +350,17 @@ const ChatBox = () => {
         }));
         setMessages(msgs);
 
-        // Restore Requirements card if conversation already has messages + filters
+        // Restore Requirements card if conversation already has messages + filters.
+        // Guard: never override submittedFilters that onSubmit just set while a
+        // submission is in-flight (race condition — loadHistory resolves mid-stream).
         if (msgs.length > 0 && hasStoredFilters) {
-          setSubmittedFilters(restoredFilters);
+          if (!isSubmittingRef.current) setSubmittedFilters(restoredFilters);
         } else {
-          setSubmittedFilters(null);
+          if (!isSubmittingRef.current) setSubmittedFilters(null);
         }
       } catch {
         setMessages([]);
-        setSubmittedFilters(null);
+        if (!isSubmittingRef.current) setSubmittedFilters(null);
       }
     };
 
@@ -524,8 +541,8 @@ const ChatBox = () => {
     if (!selectedChat?.conversation_id)
       return toast.error("No conversation selected.");
 
-    // Validate mandatory fields for property_recommendation first message
-    if (showFilters) {
+    // Validate required filter fields only on the very first property_recommendation message
+    if (showFilters && isFirstMessage) {
       if (!filters.city)
         return toast.error("Please select a City before searching.");
       if (!filters.budget)
@@ -540,6 +557,10 @@ const ChatBox = () => {
     const promptCopy = prompt;
     const wasFirstMessage = isFirstMessage;
     setPrompt("");
+
+    // Lock out loadHistory from touching submittedFilters for the duration of this request
+    isSubmittingRef.current = true;
+    streamingStartedRef.current = false;
 
     // ── Optimistically render user message ────────────────────────────────
     const userMsg = buildUserMessage(promptCopy);
@@ -558,7 +579,9 @@ const ChatBox = () => {
     const payload = buildChatPayload({
       conversationId: selectedChat.conversation_id,
       message: promptCopy,
-      filters: showFilters ? filters : {},
+      // Top-level filter fields only on the first message; subsequent messages
+      // use current_filters for drift detection instead
+      filters: wasFirstMessage && showFilters ? filters : {},
       enquiryType: wasFirstMessage ? enquiryType : undefined,
       currentFilters: filters,
     });
@@ -570,110 +593,250 @@ const ChatBox = () => {
     let streamErrored = false;
 
     try {
-      const res = await fetch(`${baseUrl}/chat/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      if (enquiryType === "property_connoisseur") {
+        // ── Property Connoisseur Agent (POST /connoisseur) ────────────────────
+        const connoisseurPayload = {
+          conversation_id: selectedChat.conversation_id,
+          user_id: user.id,
+          prompt: promptCopy,
+          enquiry_type: "property_connoisseur",
+        };
 
-      // Non-2xx before stream opens — parse error and bail
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        const msg = errBody.detail || `Request failed (${res.status})`;
-        toast.error(msg);
-        setMessages((prev) => prev.filter((m) => m !== userMsg && m !== placeholderMsg));
-        return;
-      }
+        console.log(
+          `[CONNOISSEUR] Request sent — conversation_id: ${selectedChat.conversation_id}`,
+        );
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+        const cRes = await fetch(`${baseUrl}/connoisseur`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(connoisseurPayload),
+        });
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        if (!cRes.ok) {
+          const errBody = await cRes.json().catch(() => ({}));
+          const msg = errBody.detail || `Request failed (${cRes.status})`;
+          console.error(`[CONNOISSEUR] Error: ${msg}`);
+          toast.error(msg);
+          setMessages((prev) =>
+            prev.filter((m) => m !== userMsg && m !== placeholderMsg),
+          );
+          return;
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        const cReader = cRes.body.getReader();
+        const cDecoder = new TextDecoder();
+        let cBuffer = "";
 
-        // Split on double-newline (SSE event boundary), keep incomplete tail
-        const events = buffer.split("\n\n");
-        buffer = events.pop(); // last element may be incomplete
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done: cDone, value: cValue } = await cReader.read();
+          if (cDone) break;
 
-        for (const event of events) {
-          const line = event.trim();
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
+          cBuffer += cDecoder.decode(cValue, { stream: true });
+          const cEvents = cBuffer.split("\n\n");
+          cBuffer = cEvents.pop();
 
-          // End of stream
-          if (raw === "[DONE]") return;
+          for (const cEvent of cEvents) {
+            const cLine = cEvent.trim();
+            if (!cLine.startsWith("data: ")) continue;
+            const cRaw = cLine.slice(6).trim();
 
-          let parsed;
-          try {
-            parsed = JSON.parse(raw);
-          } catch {
-            continue;
-          }
-
-          // ── Token ───────────────────────────────────────────────────────
-          if (parsed.token != null) {
-            if (!isStreaming) setIsStreaming(true);
-            partialReply += parsed.token;
-            const captured = partialReply;
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1] = {
-                ...updated[updated.length - 1],
-                content: captured,
-              };
-              return updated;
-            });
-          }
-
-          // ── Stream error from backend ────────────────────────────────────
-          if (parsed.error) {
-            streamErrored = true;
-            toast.error(parsed.error);
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1] = {
-                ...updated[updated.length - 1],
-                interrupted: true,
-              };
-              return updated;
-            });
-            return;
-          }
-
-          // ── Metadata event (credits, data_fetched, etc.) ─────────────────
-          if (parsed.type === "meta") {
-            if (parsed.credits_remaining != null) {
-              setUser((prev) => ({ ...prev, credits: parsed.credits_remaining }));
+            if (cRaw === "[DONE]") {
+              console.log("[CONNOISSEUR] Stream complete");
+              if (wasFirstMessage) {
+                updateConversationPreview(
+                  selectedChat.conversation_id,
+                  promptCopy.slice(0, 50),
+                );
+              }
+              return;
             }
-            if (wasFirstMessage) {
-              updateConversationPreview(
-                selectedChat.conversation_id,
-                promptCopy.slice(0, 50),
+
+            let cParsed;
+            try {
+              cParsed = JSON.parse(cRaw);
+            } catch {
+              continue;
+            }
+
+            // ── Token ────────────────────────────────────────────────────────
+            if (cParsed.token != null) {
+              if (!streamingStartedRef.current) {
+                streamingStartedRef.current = true;
+                setIsStreaming(true);
+                console.log("[CONNOISSEUR] Streaming started");
+              }
+              partialReply += cParsed.token;
+              const cCaptured = partialReply;
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: cCaptured,
+                };
+                return updated;
+              });
+            }
+
+            // ── Sources ──────────────────────────────────────────────────────
+            if (cParsed.sources != null) {
+              console.log(
+                `[CONNOISSEUR] Sources received — count: ${cParsed.sources.length}`,
               );
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  sources: cParsed.sources,
+                };
+                return updated;
+              });
+            }
+
+            // ── Stream error ─────────────────────────────────────────────────
+            if (cParsed.error) {
+              streamErrored = true;
+              console.error(`[CONNOISSEUR] Error: ${cParsed.error}`);
+              toast.error(cParsed.error);
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  interrupted: true,
+                };
+                return updated;
+              });
+              return;
             }
           }
         }
-      }
 
-      // Reader closed before [DONE] — treat as interrupted if we have content
-      if (partialReply && !streamErrored) {
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            interrupted: true,
-          };
-          return updated;
+        // cReader closed before [DONE]
+        if (partialReply && !streamErrored) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              interrupted: true,
+            };
+            return updated;
+          });
+        }
+      } else {
+        // ── Recommendation / Sales Assist / General (chat/stream path) ────────
+        const res = await fetch(`${baseUrl}/chat/stream`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(payload),
         });
-      }
+
+        // Non-2xx before stream opens — parse error and bail
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          const msg = errBody.detail || `Request failed (${res.status})`;
+          toast.error(msg);
+          setMessages((prev) => prev.filter((m) => m !== userMsg && m !== placeholderMsg));
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Split on double-newline (SSE event boundary), keep incomplete tail
+          const events = buffer.split("\n\n");
+          buffer = events.pop(); // last element may be incomplete
+
+          for (const event of events) {
+            const line = event.trim();
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6).trim();
+
+            // End of stream
+            if (raw === "[DONE]") return;
+
+            let parsed;
+            try {
+              parsed = JSON.parse(raw);
+            } catch {
+              continue;
+            }
+
+            // ── Token ─────────────────────────────────────────────────────
+            if (parsed.token != null) {
+              // Use ref — isStreaming from closure is stale; without this,
+              // setIsStreaming(true) would fire on every single token
+              if (!streamingStartedRef.current) {
+                streamingStartedRef.current = true;
+                setIsStreaming(true);
+              }
+              partialReply += parsed.token;
+              const captured = partialReply;
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: captured,
+                };
+                return updated;
+              });
+            }
+
+            // ── Stream error from backend ──────────────────────────────────
+            if (parsed.error) {
+              streamErrored = true;
+              toast.error(parsed.error);
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  interrupted: true,
+                };
+                return updated;
+              });
+              return;
+            }
+
+            // ── Metadata event (credits, data_fetched, etc.) ───────────────
+            if (parsed.type === "meta") {
+              if (parsed.credits_remaining != null) {
+                setUser((prev) => ({ ...prev, credits: parsed.credits_remaining }));
+              }
+              if (wasFirstMessage) {
+                updateConversationPreview(
+                  selectedChat.conversation_id,
+                  promptCopy.slice(0, 50),
+                );
+              }
+            }
+          }
+        }
+
+        // Reader closed before [DONE] — treat as interrupted if we have content
+        if (partialReply && !streamErrored) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              interrupted: true,
+            };
+            return updated;
+          });
+        }
+      } // end else (recommendation path)
     } catch (err) {
       // Network / fetch error
       if (!streamErrored) {
@@ -696,43 +859,39 @@ const ChatBox = () => {
         }
       }
     } finally {
+      isSubmittingRef.current = false;
+      streamingStartedRef.current = false;
       setIsStreaming(false);
       setLoading(false);
     }
   };
 
-  // ── Requirements card pills ─────────────────────────────────────────────────
-  const requirementPills = submittedFilters
-    ? [
-        { label: "City", value: submittedFilters.city },
-        {
-          label: "Budget",
-          value: submittedFilters.budget
-            ? `£${submittedFilters.budget}/wk`
-            : "",
-        },
-        { label: "University", value: submittedFilters.university },
-        {
-          label: "Room",
-          value:
-            ROOM_TYPE_LABEL[submittedFilters.roomType] ||
-            submittedFilters.roomType ||
-            "",
-        },
-        { label: "Move-in", value: submittedFilters.moveIn },
-        {
-          label: "Lease",
-          value: submittedFilters.lease ? `${submittedFilters.lease} wks` : "",
-        },
-      ].filter((p) => p.value)
-    : [];
+  // ── Requirements card pills — always from live filter state ─────────────────
+  // Bar is visible whenever any value is non-empty (no explicit "submit" needed).
+  const requirementPills = [
+    { label: "City",       value: filters.city },
+    {
+      label: "Budget",
+      value: filters.budget ? `£${filters.budget}/wk` : "",
+    },
+    { label: "University", value: filters.university },
+    {
+      label: "Room",
+      value: ROOM_TYPE_LABEL[filters.roomType] || filters.roomType || "",
+    },
+    { label: "Move-in",    value: filters.moveIn },
+    {
+      label: "Lease",
+      value: filters.lease ? `${filters.lease} wks` : "",
+    },
+  ].filter((p) => p.value);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col min-h-0 m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
       {/* ── Requirements Navbar (animated, outside scroll area) ─────────────── */}
       <AnimatePresence>
-        {submittedFilters && requirementPills.length > 0 && (
+        {!isFirstMessage && enquiryType === "property_recommendation" && requirementPills.length > 0 && (
           <motion.div
             key="req-navbar"
             variants={navbarVariants}
@@ -882,6 +1041,34 @@ const ChatBox = () => {
                           response interrupted
                         </p>
                       )}
+
+                      {/* Sources — muted citation tags from the Connoisseur agent */}
+                      {message.sources && message.sources.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 pl-1">
+                          {message.sources.map((src, si) => (
+                            <span
+                              key={si}
+                              className={`inline-flex items-center gap-1 text-xs px-2 py-0.5
+                                rounded-full border select-none
+                                ${isDark
+                                  ? "bg-white/5 border-white/10 text-gray-500"
+                                  : "bg-gray-50 border-gray-200 text-gray-400"
+                                }`}
+                            >
+                              <span className={isDark ? "text-gray-600" : "text-gray-300"}>
+                                ◈
+                              </span>
+                              <span>{src.title}</span>
+                              {src.section && (
+                                <>
+                                  <span className="opacity-40">·</span>
+                                  <span>{src.section}</span>
+                                </>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -923,58 +1110,92 @@ const ChatBox = () => {
       <form
         onSubmit={onSubmit}
         className="flex-shrink-0 bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F]/30
-          rounded-xl w-full px-4 py-3 flex flex-col gap-3"
+          rounded-xl w-full px-4 py-3 flex flex-col"
       >
-        {/* Filter row — first message OR editing requirements */}
-        {showFilterRow && (
-          <div className="w-full flex items-center gap-1 px-2">
-            {FILTER_CONFIG.map((field) => (
-              <div key={field.key} className="w-full min-w-0">
-                {renderFilter(field)}
-              </div>
-            ))}
-
-            {editingRequirements && (
-              <motion.button
-                type="button"
-                onClick={handleApplyFilters}
-                disabled={savingFilters}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="shrink-0 flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg
-                  bg-[#80609F] hover:bg-[#6d4e8a] active:bg-[#5d3f77]
-                  text-white font-medium transition-colors
-                  disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                {savingFilters ? "…" : "Apply ✓"}
-              </motion.button>
-            )}
+        {/*
+          Wrapper collapses its bottom margin when neither the filter row nor the
+          placeholder has content — this removes the dead gap above the input row.
+        */}
+        <div
+          style={{
+            marginBottom: showFilters || isConnoisseur ? "0.75rem" : "0",
+            transition: "margin-bottom 0.3s ease",
+          }}
+        >
+          {/* Filter dropdowns */}
+          <div
+            style={{
+              maxHeight: showFilters ? "60px" : "0px",
+              opacity:   showFilters ? 1       : 0,
+              overflow:  "hidden",
+              transition: "max-height 0.3s ease, opacity 0.25s ease",
+              pointerEvents: showFilters ? "auto" : "none",
+            }}
+          >
+            <div className="w-full flex items-center gap-1 px-2">
+              {FILTER_CONFIG.map((field) => (
+                <div key={field.key} className="w-full min-w-0">
+                  {renderFilter(field)}
+                </div>
+              ))}
+              {editingRequirements && (
+                <motion.button
+                  type="button"
+                  onClick={handleApplyFilters}
+                  disabled={savingFilters}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="shrink-0 flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg
+                    bg-[#80609F] hover:bg-[#6d4e8a] active:bg-[#5d3f77]
+                    text-white font-medium transition-colors
+                    disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {savingFilters ? "…" : "Apply ✓"}
+                </motion.button>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Connoisseur placeholder */}
+          <div
+            style={{
+              maxHeight:  isConnoisseur ? "36px" : "0px",
+              opacity:    isConnoisseur ? 1      : 0,
+              overflow:   "hidden",
+              transition: "max-height 0.3s ease, opacity 0.25s ease 0.05s",
+              pointerEvents: "none",
+            }}
+          >
+            <p className="px-4 py-1 text-sm text-gray-400 italic select-none">
+              Ask anything about student accommodation
+            </p>
+          </div>
+        </div>
 
         {/* Message input row */}
         <div className="flex items-center gap-3">
-          {isFirstMessage && (
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-52">
-                <Select
-                  options={ENQUIRY_TYPES}
-                  value={
-                    ENQUIRY_TYPES.find((o) => o.value === enquiryType) ??
-                    ENQUIRY_TYPES[0]
-                  }
-                  onChange={(opt) =>
-                    setEnquiryType(opt ? opt.value : "property_recommendation")
-                  }
-                  menuPlacement="auto"
-                  menuPosition="fixed"
-                  menuPortalTarget={document.body}
-                  isSearchable={false}
-                  styles={selectStyles}
-                />
-              </div>
+          {/* Agent selector — always visible so the user can switch at any time */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-52">
+              <Select
+                options={ENQUIRY_TYPES}
+                value={
+                  ENQUIRY_TYPES.find((o) => o.value === enquiryType) ??
+                  ENQUIRY_TYPES[0]
+                }
+                onChange={(opt) => {
+                  const next = opt ? opt.value : "property_recommendation";
+                  setEnquiryType(next);
+                  console.log(`[AGENT] Active agent: ${next}`);
+                }}
+                menuPlacement="auto"
+                menuPosition="fixed"
+                menuPortalTarget={document.body}
+                isSearchable={false}
+                styles={selectStyles}
+              />
             </div>
-          )}
+          </div>
 
           <textarea
             ref={textareaRef}
