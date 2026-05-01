@@ -18,9 +18,9 @@ import {
 // ─── Enquiry types ────────────────────────────────────────────────────────────
 const ENQUIRY_TYPES = [
   { value: "property_recommendation", label: "Property Recommendation" },
-  { value: "property_connoisseur",    label: "Property Connoisseur"    },
-  { value: "sales_assist",            label: "Sales Assist"            },
-  { value: "general_question",        label: "General Question"        },
+  { value: "property_connoisseur", label: "Sales Connoisseur" },
+  // { value: "sales_assist", label: "Sales Assist" },
+  { value: "general_question", label: "General Question" },
 ];
 
 // ─── Room type options + fast label lookup ────────────────────────────────────
@@ -741,7 +741,9 @@ const ChatBox = () => {
           const errBody = await res.json().catch(() => ({}));
           const msg = errBody.detail || `Request failed (${res.status})`;
           toast.error(msg);
-          setMessages((prev) => prev.filter((m) => m !== userMsg && m !== placeholderMsg));
+          setMessages((prev) =>
+            prev.filter((m) => m !== userMsg && m !== placeholderMsg),
+          );
           return;
         }
 
@@ -813,7 +815,10 @@ const ChatBox = () => {
             // ── Metadata event (credits, data_fetched, etc.) ───────────────
             if (parsed.type === "meta") {
               if (parsed.credits_remaining != null) {
-                setUser((prev) => ({ ...prev, credits: parsed.credits_remaining }));
+                setUser((prev) => ({
+                  ...prev,
+                  credits: parsed.credits_remaining,
+                }));
               }
               if (wasFirstMessage) {
                 updateConversationPreview(
@@ -869,7 +874,7 @@ const ChatBox = () => {
   // ── Requirements card pills — always from live filter state ─────────────────
   // Bar is visible whenever any value is non-empty (no explicit "submit" needed).
   const requirementPills = [
-    { label: "City",       value: filters.city },
+    { label: "City", value: filters.city },
     {
       label: "Budget",
       value: filters.budget ? `£${filters.budget}/wk` : "",
@@ -879,7 +884,7 @@ const ChatBox = () => {
       label: "Room",
       value: ROOM_TYPE_LABEL[filters.roomType] || filters.roomType || "",
     },
-    { label: "Move-in",    value: filters.moveIn },
+    { label: "Move-in", value: filters.moveIn },
     {
       label: "Lease",
       value: filters.lease ? `${filters.lease} wks` : "",
@@ -891,75 +896,79 @@ const ChatBox = () => {
     <div className="flex-1 flex flex-col min-h-0 m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
       {/* ── Requirements Navbar (animated, outside scroll area) ─────────────── */}
       <AnimatePresence>
-        {!isFirstMessage && enquiryType === "property_recommendation" && requirementPills.length > 0 && (
-          <motion.div
-            key="req-navbar"
-            variants={navbarVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className={`flex-shrink-0 flex items-center gap-3 mb-2 px-4 py-2.5 rounded-xl border
+        {!isFirstMessage &&
+          enquiryType === "property_recommendation" &&
+          requirementPills.length > 0 && (
+            <motion.div
+              key="req-navbar"
+              variants={navbarVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className={`flex-shrink-0 flex items-center gap-3 mb-2 px-4 py-2.5 rounded-xl border
               ${
                 isDark
                   ? "bg-[#1a0f2e]/80 border-[#80609F]/25 backdrop-blur-sm"
                   : "bg-white/80     border-[#80609F]/15 backdrop-blur-sm shadow-sm"
               }`}
-          >
-            {/* Left: label */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div
-                className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`}
-              />
-              <span
-                className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
-                ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
-              >
-                Requisite
-              </span>
-            </div>
-
-            {/* Divider */}
-            <div
-              className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`}
-            />
-
-            {/* Center: pills — scrollable row */}
-            <div
-              className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
-              [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
-              {requirementPills.map((pill) => (
+              {/* Left: label */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div
+                  className={`w-1.5 h-1.5 rounded-full ${isDark ? "bg-[#b08fd4]" : "bg-[#80609F]"}`}
+                />
                 <span
-                  key={pill.label}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0
+                  className={`text-xs font-semibold uppercase tracking-widest whitespace-nowrap
+                ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
+                >
+                  Requisite
+                </span>
+              </div>
+
+              {/* Divider */}
+              <div
+                className={`w-px self-stretch ${isDark ? "bg-[#80609F]/20" : "bg-[#80609F]/15"}`}
+              />
+
+              {/* Center: pills — scrollable row */}
+              <div
+                className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0
+              [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              >
+                {requirementPills.map((pill) => (
+                  <span
+                    key={pill.label}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0
                     ${
                       isDark
                         ? "bg-[#80609F]/15 border border-[#80609F]/30 text-gray-200"
                         : "bg-[#80609F]/5  border border-[#80609F]/20 text-gray-700"
                     }`}
-                >
-                  <span className={isDark ? "text-gray-500" : "text-gray-400"}>
-                    {pill.label}
-                  </span>
-                  <span
-                    className={
-                      isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"
-                    }
                   >
-                    ·
+                    <span
+                      className={isDark ? "text-gray-500" : "text-gray-400"}
+                    >
+                      {pill.label}
+                    </span>
+                    <span
+                      className={
+                        isDark ? "text-[#80609F]/50" : "text-[#80609F]/35"
+                      }
+                    >
+                      ·
+                    </span>
+                    <span className="font-medium">{pill.value}</span>
                   </span>
-                  <span className="font-medium">{pill.value}</span>
-                </span>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Right: Edit toggle */}
-            <motion.button
-              type="button"
-              onClick={() => setEditingRequirements((p) => !p)}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors
+              {/* Right: Edit toggle */}
+              <motion.button
+                type="button"
+                onClick={() => setEditingRequirements((p) => !p)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className={`shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors
                 ${
                   editingRequirements
                     ? isDark
@@ -969,11 +978,11 @@ const ChatBox = () => {
                       ? "text-gray-500 hover:text-gray-300 hover:bg-white/5"
                       : "text-gray-400 hover:text-gray-600 hover:bg-black/5"
                 }`}
-            >
-              {editingRequirements ? "✕ Cancel" : "✏ Edit"}
-            </motion.button>
-          </motion.div>
-        )}
+              >
+                {editingRequirements ? "✕ Cancel" : "✏ Edit"}
+              </motion.button>
+            </motion.div>
+          )}
       </AnimatePresence>
 
       {/* ── Messages area (flex-1 + min-h-0 = correct scroll without overflow) ── */}
@@ -1027,7 +1036,11 @@ const ChatBox = () => {
                       {showCursor && (
                         <motion.span
                           animate={{ opacity: [1, 0, 1] }}
-                          transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 0.9,
+                            ease: "linear",
+                          }}
                           className={`inline-block ml-0.5 -mb-0.5 text-base leading-none select-none
                             ${isDark ? "text-[#b08fd4]" : "text-[#80609F]"}`}
                         >
@@ -1050,12 +1063,17 @@ const ChatBox = () => {
                               key={si}
                               className={`inline-flex items-center gap-1 text-xs px-2 py-0.5
                                 rounded-full border select-none
-                                ${isDark
-                                  ? "bg-white/5 border-white/10 text-gray-500"
-                                  : "bg-gray-50 border-gray-200 text-gray-400"
+                                ${
+                                  isDark
+                                    ? "bg-white/5 border-white/10 text-gray-500"
+                                    : "bg-gray-50 border-gray-200 text-gray-400"
                                 }`}
                             >
-                              <span className={isDark ? "text-gray-600" : "text-gray-300"}>
+                              <span
+                                className={
+                                  isDark ? "text-gray-600" : "text-gray-300"
+                                }
+                              >
                                 ◈
                               </span>
                               <span>{src.title}</span>
@@ -1126,8 +1144,8 @@ const ChatBox = () => {
           <div
             style={{
               maxHeight: showFilters ? "60px" : "0px",
-              opacity:   showFilters ? 1       : 0,
-              overflow:  "hidden",
+              opacity: showFilters ? 1 : 0,
+              overflow: "hidden",
               transition: "max-height 0.3s ease, opacity 0.25s ease",
               pointerEvents: showFilters ? "auto" : "none",
             }}
@@ -1159,9 +1177,9 @@ const ChatBox = () => {
           {/* Connoisseur placeholder */}
           <div
             style={{
-              maxHeight:  isConnoisseur ? "36px" : "0px",
-              opacity:    isConnoisseur ? 1      : 0,
-              overflow:   "hidden",
+              maxHeight: isConnoisseur ? "36px" : "0px",
+              opacity: isConnoisseur ? 1 : 0,
+              overflow: "hidden",
               transition: "max-height 0.3s ease, opacity 0.25s ease 0.05s",
               pointerEvents: "none",
             }}
