@@ -20,7 +20,22 @@ export const authHeader = (token) => ({
 });
 
 // -----------------------------------------------------------------
-// 2. Filter value transformations
+// 2. NA normalisation
+// -----------------------------------------------------------------
+
+/**
+ * Returns true if the value is an "NA" sentinel (case-insensitive).
+ * Covers: "NA", "N/A", "na", "n/a", and whitespace variants.
+ * When true, the field should be sent as null to the backend.
+ */
+const isNaValue = (v) => {
+  if (v == null) return false;
+  const s = String(v).trim().toLowerCase();
+  return s === 'na' || s === 'n/a';
+};
+
+// -----------------------------------------------------------------
+// 3. Filter value transformations
 // -----------------------------------------------------------------
 
 /**
@@ -83,13 +98,14 @@ export const buildChatPayload = ({
   if (filters.city)       payload.city       = filters.city;
   if (filters.university) payload.university = filters.university;
   if (filters.budget)     payload.budget     = parseFloat(filters.budget);
-  if (filters.roomType)   payload.room_type  = filters.roomType;
+  if (isNaValue(filters.roomType))      payload.room_type = null;
+  else if (filters.roomType)            payload.room_type = filters.roomType;
 
-  const lease = parseLeaseWeeks(filters.lease);
-  if (lease !== undefined) payload.lease = lease;
+  if (isNaValue(filters.lease))         payload.lease = null;
+  else { const lease = parseLeaseWeeks(filters.lease); if (lease !== undefined) payload.lease = lease; }
 
-  const moveIn = parseMoveInDate(filters.moveIn);
-  if (moveIn !== undefined) payload.intake = moveIn;
+  if (isNaValue(filters.moveIn))        payload.intake = null;
+  else { const moveIn = parseMoveInDate(filters.moveIn); if (moveIn !== undefined) payload.intake = moveIn; }
 
   // current_filters — sent on every request so the backend can detect
   // drift between the frontend dropdown state and the stored DB filters.
@@ -99,11 +115,14 @@ export const buildChatPayload = ({
     if (currentFilters.city)       cf.city       = currentFilters.city;
     if (currentFilters.university) cf.university = currentFilters.university;
     if (currentFilters.budget)     cf.budget     = parseFloat(currentFilters.budget);
-    if (currentFilters.roomType)   cf.room_type  = currentFilters.roomType;
-    const cfLease = parseLeaseWeeks(currentFilters.lease);
-    if (cfLease !== undefined)     cf.lease      = cfLease;
-    const cfMoveIn = parseMoveInDate(currentFilters.moveIn);
-    if (cfMoveIn !== undefined)    cf.intake     = cfMoveIn;
+    if (isNaValue(currentFilters.roomType))      cf.room_type = null;
+    else if (currentFilters.roomType)            cf.room_type = currentFilters.roomType;
+
+    if (isNaValue(currentFilters.lease))         cf.lease = null;
+    else { const cfLease = parseLeaseWeeks(currentFilters.lease); if (cfLease !== undefined) cf.lease = cfLease; }
+
+    if (isNaValue(currentFilters.moveIn))        cf.intake = null;
+    else { const cfMoveIn = parseMoveInDate(currentFilters.moveIn); if (cfMoveIn !== undefined) cf.intake = cfMoveIn; }
     if (Object.keys(cf).length)    payload.current_filters = cf;
   }
 
@@ -123,11 +142,14 @@ export const buildFiltersPatch = (filters = {}) => {
   if (filters.city)       patch.city       = filters.city;
   if (filters.university) patch.university = filters.university;
   if (filters.budget)     patch.budget     = parseFloat(filters.budget);
-  if (filters.roomType)   patch.room_type  = filters.roomType;
-  const lease = parseLeaseWeeks(filters.lease);
-  if (lease !== undefined) patch.lease     = lease;
-  const moveIn = parseMoveInDate(filters.moveIn);
-  if (moveIn !== undefined) patch.intake   = moveIn;
+  if (isNaValue(filters.roomType))      patch.room_type = null;
+  else if (filters.roomType)            patch.room_type = filters.roomType;
+
+  if (isNaValue(filters.lease))         patch.lease = null;
+  else { const lease = parseLeaseWeeks(filters.lease); if (lease !== undefined) patch.lease = lease; }
+
+  if (isNaValue(filters.moveIn))        patch.intake = null;
+  else { const moveIn = parseMoveInDate(filters.moveIn); if (moveIn !== undefined) patch.intake = moveIn; }
   return patch;
 };
 

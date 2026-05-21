@@ -20,7 +20,7 @@ const ENQUIRY_TYPES = [
   { value: "property_recommendation", label: "Property Recommendation" },
   { value: "property_connoisseur", label: "Sales Connoisseur" },
   // { value: "sales_assist", label: "Sales Assist" },
-  { value: "general_question", label: "General Question" },
+  // { value: "general_question", label: "General Question" },
 ];
 
 // ─── Room type options + fast label lookup ────────────────────────────────────
@@ -41,6 +41,7 @@ const ROOM_TYPE_OPTIONS = [
   { value: "TWODIO", label: "Twodio" },
   { value: "ENTIRE_PLACE", label: "Entire Place" },
   { value: "DORM", label: "Dorm" },
+  { value: "", label: "NA" },
 ];
 
 // value → human label (e.g. "ENSUITE" → "Ensuite")
@@ -64,7 +65,7 @@ const FILTER_CONFIG = [
     placeholder: "Room Type",
   },
   { key: "moveIn", type: "text", placeholder: "Move-in (DD-MM-YYYY)" },
-  { key: "lease", type: "integer", placeholder: "Lease (weeks)" },
+  { key: "lease", type: "text", placeholder: "Lease (weeks)" },
 ];
 
 // ─── Default filter values ────────────────────────────────────────────────────
