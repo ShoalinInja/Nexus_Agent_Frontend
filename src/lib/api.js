@@ -20,18 +20,18 @@ export const authHeader = (token) => ({
 });
 
 // -----------------------------------------------------------------
-// 2. NA normalisation
+// 2. Any value normalisation
 // -----------------------------------------------------------------
 
 /**
- * Returns true if the value is an "NA" sentinel (case-insensitive).
- * Covers: "NA", "N/A", "na", "n/a", and whitespace variants.
+ * Returns true if the value is an "Any" sentinel (case-insensitive).
+ * Covers: "Any", "N/A", "any", "n/a", and whitespace variants.
  * When true, the field should be sent as null to the backend.
  */
-const isNaValue = (v) => {
+const isAnyValue = (v) => {
   if (v == null) return false;
   const s = String(v).trim().toLowerCase();
-  return s === 'na' || s === 'n/a';
+  return s === "any";
 };
 
 // -----------------------------------------------------------------
@@ -95,35 +95,47 @@ export const buildChatPayload = ({
   if (enquiryType) payload.enquiry_type = enquiryType;
 
   // Top-level filter fields (first message or explicit overrides)
-  if (filters.city)       payload.city       = filters.city;
+  if (filters.city) payload.city = filters.city;
   if (filters.university) payload.university = filters.university;
-  if (filters.budget)     payload.budget     = parseFloat(filters.budget);
-  if (isNaValue(filters.roomType))      payload.room_type = null;
-  else if (filters.roomType)            payload.room_type = filters.roomType;
+  if (filters.budget) payload.budget = parseFloat(filters.budget);
+  if (isAnyValue(filters.roomType)) payload.room_type = null;
+  else if (filters.roomType) payload.room_type = filters.roomType;
 
-  if (isNaValue(filters.lease))         payload.lease = null;
-  else { const lease = parseLeaseWeeks(filters.lease); if (lease !== undefined) payload.lease = lease; }
+  if (isAnyValue(filters.lease)) payload.lease = null;
+  else {
+    const lease = parseLeaseWeeks(filters.lease);
+    if (lease !== undefined) payload.lease = lease;
+  }
 
-  if (isNaValue(filters.moveIn))        payload.intake = null;
-  else { const moveIn = parseMoveInDate(filters.moveIn); if (moveIn !== undefined) payload.intake = moveIn; }
+  if (isAnyValue(filters.moveIn)) payload.intake = null;
+  else {
+    const moveIn = parseMoveInDate(filters.moveIn);
+    if (moveIn !== undefined) payload.intake = moveIn;
+  }
 
   // current_filters — sent on every request so the backend can detect
   // drift between the frontend dropdown state and the stored DB filters.
   // Uses backend snake_case key names.
   if (currentFilters) {
     const cf = {};
-    if (currentFilters.city)       cf.city       = currentFilters.city;
+    if (currentFilters.city) cf.city = currentFilters.city;
     if (currentFilters.university) cf.university = currentFilters.university;
-    if (currentFilters.budget)     cf.budget     = parseFloat(currentFilters.budget);
-    if (isNaValue(currentFilters.roomType))      cf.room_type = null;
-    else if (currentFilters.roomType)            cf.room_type = currentFilters.roomType;
+    if (currentFilters.budget) cf.budget = parseFloat(currentFilters.budget);
+    if (isAnyValue(currentFilters.roomType)) cf.room_type = null;
+    else if (currentFilters.roomType) cf.room_type = currentFilters.roomType;
 
-    if (isNaValue(currentFilters.lease))         cf.lease = null;
-    else { const cfLease = parseLeaseWeeks(currentFilters.lease); if (cfLease !== undefined) cf.lease = cfLease; }
+    if (isAnyValue(currentFilters.lease)) cf.lease = null;
+    else {
+      const cfLease = parseLeaseWeeks(currentFilters.lease);
+      if (cfLease !== undefined) cf.lease = cfLease;
+    }
 
-    if (isNaValue(currentFilters.moveIn))        cf.intake = null;
-    else { const cfMoveIn = parseMoveInDate(currentFilters.moveIn); if (cfMoveIn !== undefined) cf.intake = cfMoveIn; }
-    if (Object.keys(cf).length)    payload.current_filters = cf;
+    if (isAnyValue(currentFilters.moveIn)) cf.intake = null;
+    else {
+      const cfMoveIn = parseMoveInDate(currentFilters.moveIn);
+      if (cfMoveIn !== undefined) cf.intake = cfMoveIn;
+    }
+    if (Object.keys(cf).length) payload.current_filters = cf;
   }
 
   return payload;
@@ -139,17 +151,23 @@ export const buildChatPayload = ({
  */
 export const buildFiltersPatch = (filters = {}) => {
   const patch = {};
-  if (filters.city)       patch.city       = filters.city;
+  if (filters.city) patch.city = filters.city;
   if (filters.university) patch.university = filters.university;
-  if (filters.budget)     patch.budget     = parseFloat(filters.budget);
-  if (isNaValue(filters.roomType))      patch.room_type = null;
-  else if (filters.roomType)            patch.room_type = filters.roomType;
+  if (filters.budget) patch.budget = parseFloat(filters.budget);
+  if (isAnyValue(filters.roomType)) patch.room_type = null;
+  else if (filters.roomType) patch.room_type = filters.roomType;
 
-  if (isNaValue(filters.lease))         patch.lease = null;
-  else { const lease = parseLeaseWeeks(filters.lease); if (lease !== undefined) patch.lease = lease; }
+  if (isAnyValue(filters.lease)) patch.lease = null;
+  else {
+    const lease = parseLeaseWeeks(filters.lease);
+    if (lease !== undefined) patch.lease = lease;
+  }
 
-  if (isNaValue(filters.moveIn))        patch.intake = null;
-  else { const moveIn = parseMoveInDate(filters.moveIn); if (moveIn !== undefined) patch.intake = moveIn; }
+  if (isAnyValue(filters.moveIn)) patch.intake = null;
+  else {
+    const moveIn = parseMoveInDate(filters.moveIn);
+    if (moveIn !== undefined) patch.intake = moveIn;
+  }
   return patch;
 };
 
@@ -162,10 +180,10 @@ export const buildFiltersPatch = (filters = {}) => {
  * shape expected by Message.jsx.
  */
 export const buildAssistantMessage = (replyText) => ({
-  role:      "assistant",
-  content:   replyText,
+  role: "assistant",
+  content: replyText,
   timestamp: Date.now(),
-  isImage:   false,
+  isImage: false,
 });
 
 /**
@@ -173,10 +191,10 @@ export const buildAssistantMessage = (replyText) => ({
  * before the API response arrives.
  */
 export const buildUserMessage = (promptText) => ({
-  role:      "user",
-  content:   promptText,
+  role: "user",
+  content: promptText,
   timestamp: Date.now(),
-  isImage:   false,
+  isImage: false,
 });
 
 // -----------------------------------------------------------------
@@ -187,8 +205,7 @@ export const buildUserMessage = (promptText) => ({
 export const apiCreateConversation = (axios, filters = {}) =>
   axios.post("/conversation/create", { filters });
 
-export const apiListConversations = (axios) =>
-  axios.get("/conversation/list");
+export const apiListConversations = (axios) => axios.get("/conversation/list");
 
 export const apiDeleteConversation = (axios, conversationId) =>
   axios.delete(`/conversation/${conversationId}`);
@@ -206,10 +223,10 @@ export const apiPatchFilters = (axios, conversationId, patchBody) =>
   axios.patch(`/conversation/${conversationId}/filters`, patchBody);
 
 export const apiForgotPassword = (axios, email) =>
-  axios.post('/auth/forgot-password', { email });
+  axios.post("/auth/forgot-password", { email });
 
 export const apiVerifyOtp = (axios, email, otp) =>
-  axios.post('/auth/verify-otp', { email, otp });
+  axios.post("/auth/verify-otp", { email, otp });
 
 export const apiResetPassword = (axios, email, otp, new_password) =>
-  axios.post('/auth/reset-password', { email, otp, new_password });
+  axios.post("/auth/reset-password", { email, otp, new_password });

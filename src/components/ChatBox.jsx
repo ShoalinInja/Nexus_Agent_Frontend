@@ -25,6 +25,7 @@ const ENQUIRY_TYPES = [
 
 // ─── Room type options + fast label lookup ────────────────────────────────────
 const ROOM_TYPE_OPTIONS = [
+  { value: "", label: "Any" },
   { value: "ENSUITE", label: "Ensuite" },
   { value: "STUDIO", label: "Studio" },
   { value: "NON_ENSUITE", label: "Non Ensuite" },
@@ -41,7 +42,6 @@ const ROOM_TYPE_OPTIONS = [
   { value: "TWODIO", label: "Twodio" },
   { value: "ENTIRE_PLACE", label: "Entire Place" },
   { value: "DORM", label: "Dorm" },
-  { value: "", label: "NA" },
 ];
 
 // value → human label (e.g. "ENSUITE" → "Ensuite")
