@@ -45,6 +45,14 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
     return text.length > limit ? text.slice(0, limit) + "..." : text;
   };
 
+  const initials = (name = "") =>
+    name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
   const filteredChats = (() => {
     const q = debouncedSearch.toLowerCase().trim();
 
@@ -219,24 +227,31 @@ const SideBar = ({ isMenuOpen, setIsMenuOpen }) => {
       {/* User Profile */}
       <div
         className="flex items-center gap-3 p-3 mt-4 border border-gray-300
-        dark:border-white/15 rounded-md cursor-pointer hover:scale-105 transition-all group"
+  dark:border-white/15 rounded-md cursor-pointer hover:scale-105 transition-all group"
       >
-        <img
-          src={assets?.user_icon}
-          alt="User Avatar"
-          className="w-8 h-8 rounded-full"
-        />
-        <p className="flex-1 text-sm dark:text-primary">
-          {user
-            ? `${(user.name ?? "").slice(0, 5)} (${user.credits ?? 0})`
-            : "Login Your Account"}
-        </p>
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 font-semibold text-sm">
+          {initials(user?.name)}
+        </div>
+
+        <div className="flex-1">
+          <div className="text-sm font-medium dark:text-primary">
+            {user?.name || "Guest"}
+          </div>
+
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {user ? `${user.credits ?? 0} credits` : "Login Your Account"}
+          </div>
+        </div>
+
         {user && (
           <img
-            onClick={logout}
+            onClick={(e) => {
+              e.stopPropagation(); // prevents parent click handler
+              logout();
+            }}
             src={assets.logout_icon}
             alt="Logout"
-            className="h-5 cursor-pointer not-dark:invert group-hover:block"
+            className="h-5 cursor-pointer not-dark:invert"
           />
         )}
       </div>

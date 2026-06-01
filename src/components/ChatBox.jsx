@@ -23,6 +23,31 @@ const ENQUIRY_TYPES = [
   // { value: "general_question", label: "General Question" },
 ];
 
+// ─── Empty-state tips per agent ───────────────────────────────────────────────
+const GENERIC_TIPS = {
+  heading: "Tips for better results",
+  items: [
+    "Ask one question at a time",
+    "Include only the details that matter — dates, names, numbers",
+    "State constraints upfront, not after the answer",
+  ],
+};
+
+const AGENT_TIPS = {
+  property_recommendation: {
+    heading: "Tips for better recommendation",
+    items: [
+      `If requisites are unclear, set Lease, Room Type, and Move-in Date to "Any". 
+      Mention these flexible requisites in the prompt (include both Ensuite and Studio).`,
+      "Guarantor status, if you have one",
+      "Preferred payment plan, if any",
+      "Dual occupancy preference, if any",
+      "Use Assertive tone if requisite is must have, not just nice to have",
+    ],
+  },
+  property_connoisseur: GENERIC_TIPS,
+};
+
 // ─── Room type options + fast label lookup ────────────────────────────────────
 const ROOM_TYPE_OPTIONS = [
   { value: "", label: "Any" },
@@ -1004,9 +1029,24 @@ const ChatBox = () => {
                 className="w-full max-w-56 md:max-w-68"
                 alt="logo"
               />
-              <p className="mt-5 text-4xl sm:text-6xl text-center text-gray-400">
-                Ask Me Anything
-              </p>
+              {prompt.trim().length === 0 &&
+                (() => {
+                  const tips = AGENT_TIPS[enquiryType] || GENERIC_TIPS;
+                  return (
+                    <div className="mt-5 text-gray-600 dark:text-gray-300">
+                      <p className="text-base font-light mb-3">
+                        {tips.heading}
+                      </p>
+                      <ul className="text-base space-y-2 list-none p-0">
+                        {tips.items.map((item, i) => (
+                          <li key={i} className="whitespace-pre-line">
+                            — {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
             </motion.div>
           ) : (
             /* Messages list — staggered entry */
@@ -1229,7 +1269,7 @@ const ChatBox = () => {
                 ? "Receiving response…"
                 : loading
                   ? "Processing…"
-                  : "Type your prompt..."
+                  : "Type your requisites..."
             }
             className="w-full text-sm outline-none bg-transparent border-none resize-none overflow-hidden leading-5 py-1
               disabled:opacity-60 disabled:cursor-not-allowed"
