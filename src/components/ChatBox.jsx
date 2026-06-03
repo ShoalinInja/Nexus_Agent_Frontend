@@ -722,6 +722,19 @@ const ChatBox = () => {
               });
             }
 
+            // ── Metadata event (credits) ─────────────────────────────────────
+            if (cParsed.type === "meta") {
+              if (cParsed.credits_remaining != null) {
+                setUser((prev) => ({
+                  ...prev,
+                  credits: cParsed.credits_remaining,
+                }));
+                console.log(
+                  `[CONNOISSEUR] Credits updated: ${cParsed.credits_remaining}`,
+                );
+              }
+            }
+
             // ── Stream error ─────────────────────────────────────────────────
             if (cParsed.error) {
               streamErrored = true;
