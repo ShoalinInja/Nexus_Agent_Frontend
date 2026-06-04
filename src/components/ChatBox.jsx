@@ -24,12 +24,16 @@ const ENQUIRY_TYPES = [
 ];
 
 // ─── Empty-state tips per agent ───────────────────────────────────────────────
-const GENERIC_TIPS = {
-  heading: "Tips for better results",
+const PROP_CON_TIPS = {
+  heading:
+    "Ask anything about booking process, PM policies, properties, objections, scripts, offers, or commissionability.",
   items: [
-    "Ask one question at a time",
-    "Include only the details that matter — dates, names, numbers",
-    "State constraints upfront, not after the answer",
+    "Be specific — name the PM, property, or city",
+    "One question at a time",
+    "For commission or anything you'll send to a student in writing, cross-check with your manager",
+    'If it says "data not available," escalate — don\'t guess',
+    `Examples: what is the FSL booking process and referral code? 
+    Student is waiting for visa decision, what should i say?`,
   ],
 };
 
