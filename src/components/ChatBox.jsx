@@ -49,7 +49,7 @@ const AGENT_TIPS = {
       "Use Assertive tone if requisite is must have, not just nice to have",
     ],
   },
-  property_connoisseur: GENERIC_TIPS,
+  property_connoisseur: PROP_CON_TIPS,
 };
 
 // ─── Room type options + fast label lookup ────────────────────────────────────
