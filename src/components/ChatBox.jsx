@@ -33,7 +33,7 @@ const PROP_CON_TIPS = {
     "For commission or anything you'll send to a student in writing, cross-check with your manager",
     'If it says "data not available," escalate — don\'t guess',
     `Examples: what is the FSL booking process and referral code? 
-    Student is waiting for visa decision, what should i say?`,
+               Student is waiting for visa decision, what should i say?`,
   ],
 };
 
@@ -535,14 +535,14 @@ const ChatBox = () => {
 
   // ── Scroll to latest message ────────────────────────────────────────────────
   // Use instant scroll during streaming (smooth causes jitter with rapid updates)
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: containerRef.current.scrollHeight,
-        behavior: isStreaming ? "instant" : "smooth",
-      });
-    }
-  }, [messages, isStreaming]);
+  // useEffect(() => {
+  //   if (containerRef.current) {
+  //     containerRef.current.scrollTo({
+  //       top: containerRef.current.scrollHeight,
+  //       behavior: isStreaming ? "instant" : "smooth",
+  //     });
+  //   }
+  // }, [messages, isStreaming]);
 
   // ── Apply filter changes ("Done" button without sending a message) ──────────
   const handleApplyFilters = async () => {
