@@ -612,7 +612,7 @@ const ChatBox = () => {
       // Top-level filter fields only on the first message; subsequent messages
       // use current_filters for drift detection instead
       filters: wasFirstMessage && showFilters ? filters : {},
-      enquiryType: wasFirstMessage ? enquiryType : undefined,
+      enquiryType: enquiryType,
       currentFilters: filters,
     });
 
