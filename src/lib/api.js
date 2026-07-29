@@ -222,11 +222,5 @@ export const apiGetFilters = (axios, conversationId) =>
 export const apiPatchFilters = (axios, conversationId, patchBody) =>
   axios.patch(`/conversation/${conversationId}/filters`, patchBody);
 
-export const apiForgotPassword = (axios, email) =>
-  axios.post("/auth/forgot-password", { email });
-
-export const apiVerifyOtp = (axios, email, otp) =>
-  axios.post("/auth/verify-otp", { email, otp });
-
-export const apiResetPassword = (axios, email, otp, new_password) =>
-  axios.post("/auth/reset-password", { email, otp, new_password });
+export const apiResetPassword = (axios, email, recovery_key, new_password) =>
+  axios.post("/auth/reset-password", { email, recovery_key, new_password });
