@@ -14,24 +14,6 @@ axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 
 const AppContext = createContext();
 
-// Pitch Rail — client-only, in-memory state (no backend, no persistence).
-// Hardcoded item keys, matching the 4 items rendered in PitchRail.jsx.
-const PITCH_ITEM_IDS = [
-  "pitch_vas",
-  "stack_cashback",
-  "referral_cashback",
-  "log_potentials",
-];
-
-const defaultPitchState = () => ({
-  items: Object.fromEntries(
-    PITCH_ITEM_IDS.map((id) => [
-      id,
-      { checked: false, excepted: false, reason: null, updated_at: null },
-    ])
-  ),
-});
-
 export const AppContextProvider = ({ children }) => {
   const navigate = useNavigate();
 
@@ -43,8 +25,6 @@ export const AppContextProvider = ({ children }) => {
   const [token, setToken]                       = useState(localStorage.getItem("token") || null);
   const [loadingUser, setLoadingUser]           = useState(true);
   const [hasFetchedChats, setHasFetchedChats]   = useState(false);
-  // Pitch Rail state per conversation_id, in-memory only — never persisted.
-  const [pitchChecklistsByConversation, setPitchChecklistsByConversation] = useState({});
 
   // ── fetchUser ─────────────────────────────────────────────────────────────
   const fetchUser = async () => {
@@ -152,56 +132,6 @@ export const AppContextProvider = ({ children }) => {
     );
   };
 
-  // ── Pitch Rail — client-only state for the currently selected conversation.
-  // Nothing here calls the backend or persists anywhere; state lives only in
-  // memory for the current session, keyed by conversation_id.
-  const updatePitchChecklistItem = (itemId, action, reason) => {
-    const conversationId = selectedChat?.conversation_id;
-    if (!conversationId) return;
-
-    setPitchChecklistsByConversation((prev) => {
-      const current = prev[conversationId] || defaultPitchState();
-      const now = new Date().toISOString();
-
-      let newItemState;
-      if (action === "check") {
-        newItemState = { checked: true, excepted: false, reason: null, updated_at: now };
-      } else if (action === "uncheck") {
-        newItemState = { checked: false, excepted: false, reason: null, updated_at: now };
-      } else {
-        newItemState = {
-          checked: false,
-          excepted: true,
-          reason: reason?.trim() || null,
-          updated_at: now,
-        };
-      }
-
-      return {
-        ...prev,
-        [conversationId]: {
-          ...current,
-          items: { ...current.items, [itemId]: newItemState },
-        },
-      };
-    });
-  };
-
-  // Derived, read-only view of the current conversation's checklist.
-  const currentPitchState =
-    selectedChat?.conversation_id &&
-    (pitchChecklistsByConversation[selectedChat.conversation_id] || defaultPitchState());
-
-  const pitchChecklist = currentPitchState
-    ? {
-        conversation_id: selectedChat.conversation_id,
-        items: currentPitchState.items,
-        completed_count: Object.values(currentPitchState.items).filter(
-          (s) => s.checked || s.excepted
-        ).length,
-      }
-    : null;
-
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (theme === "dark") document.documentElement.classList.add("dark");
@@ -249,8 +179,6 @@ export const AppContextProvider = ({ children }) => {
     axios,
     deleteChat,
     updateConversationPreview,
-    pitchChecklist,
-    updatePitchChecklistItem,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

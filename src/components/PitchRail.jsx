@@ -1,5 +1,126 @@
-import React, { useState } from "react";
-import { useAppContext } from "../context/AppContext";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+
+// Hand-drawn inline SVGs — matches this codebase's existing convention
+// (no icon library dependency anywhere in the project; see PitchRail's old
+// checkmark, Message.jsx, SideBar.jsx). 16x16 viewBox, consistent stroke
+// weight, white-on-purple to sit inside the existing badge circle.
+const StarIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M8 1.5l1.8 3.7 4.1.6-3 2.9.7 4.1L8 10.8l-3.6 1.9.7-4.1-3-2.9 4.1-.6L8 1.5z"
+      stroke="white"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const PercentIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <circle cx="5" cy="5" r="1.6" stroke="white" strokeWidth="1.3" />
+    <circle cx="11" cy="11" r="1.6" stroke="white" strokeWidth="1.3" />
+    <line
+      x1="12"
+      y1="4"
+      x2="4"
+      y2="12"
+      stroke="white"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const ShareIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <circle cx="3.8" cy="8" r="1.6" stroke="white" strokeWidth="1.2" />
+    <circle cx="12.2" cy="3.6" r="1.6" stroke="white" strokeWidth="1.2" />
+    <circle cx="12.2" cy="12.4" r="1.6" stroke="white" strokeWidth="1.2" />
+    <line
+      x1="5.2"
+      y1="7.2"
+      x2="10.8"
+      y2="4.4"
+      stroke="white"
+      strokeWidth="1.1"
+    />
+    <line
+      x1="5.2"
+      y1="8.8"
+      x2="10.8"
+      y2="11.6"
+      stroke="white"
+      strokeWidth="1.1"
+    />
+  </svg>
+);
+
+const ClipboardPlusIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <rect
+      x="3"
+      y="2.5"
+      width="10"
+      height="11.5"
+      rx="1.2"
+      stroke="white"
+      strokeWidth="1.3"
+    />
+    <rect
+      x="5.8"
+      y="1"
+      width="4.4"
+      height="2.4"
+      rx="0.6"
+      stroke="white"
+      strokeWidth="1.3"
+    />
+    <line
+      x1="8"
+      y1="7"
+      x2="8"
+      y2="11"
+      stroke="white"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <line
+      x1="6"
+      y1="9"
+      x2="10"
+      y2="9"
+      stroke="white"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
 
 // Hardcoded per spec — not admin-editable in this pass.
 const ITEMS = [
@@ -7,244 +128,151 @@ const ITEMS = [
     id: "pitch_vas",
     title: "Pitch VAS",
     subtext: "Ask every student — value-added services close deals.",
+    Icon: StarIcon,
   },
   {
     id: "stack_cashback",
     title: "Stack the cashback",
     subtext: "Property + [company] cashback — mention both, together.",
+    Icon: PercentIcon,
   },
   {
     id: "referral_cashback",
     title: "Offer referral cashback",
     subtext: "Every student is a lead source — pitch it before they hang up.",
+    Icon: ShareIcon,
   },
   {
     id: "log_potentials",
     title: "Log to potentials",
     subtext: "Lined-up but not booked? Add them to your potentials list now.",
+    Icon: ClipboardPlusIcon,
   },
 ];
 
-const DEFAULT_ITEM_STATE = { checked: false, excepted: false, reason: null };
-
-const RING_RADIUS = 18;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const GAP_PX = 6; // matches gap-1.5
+const HOLD_MS = 7000;
+const SHAKE_MS = 1200;
+const SLIDE_MS = 800;
 
 const PitchRail = () => {
-  const { pitchChecklist, updatePitchChecklistItem } = useAppContext();
-  const [exceptionOpenFor, setExceptionOpenFor] = useState(null);
-  const [reasonDraft, setReasonDraft] = useState("");
+  const [paused, setPaused] = useState(false);
+  const [index, setIndex] = useState(0); // 0..4 — 4 means "full loop reached", snaps back to 0
+  const [animate, setAnimate] = useState(true);
+  const [shakingSlot, setShakingSlot] = useState(null); // which of the 8 rendered slots is shaking
+  const [itemHeight, setItemHeight] = useState(0);
+  const measureRef = useRef(null);
+  const timeoutsRef = useRef([]);
 
-  const items = pitchChecklist?.items || {};
-  const completedCount = pitchChecklist?.completed_count ?? 0;
-  const isComplete = completedCount >= ITEMS.length;
-
-  const ringOffset =
-    RING_CIRCUMFERENCE * (1 - completedCount / ITEMS.length);
-  const ringColor = isComplete ? "#34D399" : "#FBBF24";
-
-  const openException = (itemId, currentReason) => {
-    setExceptionOpenFor(itemId);
-    setReasonDraft(currentReason || "");
-  };
-
-  const cancelException = () => {
-    setExceptionOpenFor(null);
-    setReasonDraft("");
-  };
-
-  const submitException = (itemId) => {
-    if (!reasonDraft.trim()) return;
-    updatePitchChecklistItem(itemId, "except", reasonDraft.trim());
-    setExceptionOpenFor(null);
-    setReasonDraft("");
-  };
-
-  const toggleChecked = (itemId, currentState) => {
-    updatePitchChecklistItem(itemId, currentState.checked ? "uncheck" : "check");
-  };
-
-  const handleCheckboxKeyDown = (e, itemId, currentState) => {
-    if (e.key === " " || e.key === "Enter") {
-      e.preventDefault();
-      toggleChecked(itemId, currentState);
+  // Measure the actual rendered card height so the marquee's translateY
+  // math is exact regardless of font metrics/content — never a guessed px.
+  useLayoutEffect(() => {
+    if (measureRef.current) {
+      const h = measureRef.current.getBoundingClientRect().height;
+      if (h && Math.abs(h - itemHeight) > 0.5) setItemHeight(h);
     }
-  };
+  });
+
+  useEffect(() => {
+    if (paused || !itemHeight) return undefined;
+
+    const clear = () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
+
+    if (index === 4) {
+      // Full loop complete — the duplicated item now showing is visually
+      // identical to slot 0, so snap back instantly (no transition) here.
+      const t = setTimeout(() => {
+        setAnimate(false);
+        setIndex(0);
+      }, SLIDE_MS);
+      timeoutsRef.current.push(t);
+      return clear;
+    }
+
+    const holdTimer = setTimeout(() => {
+      setShakingSlot(index);
+      const shakeTimer = setTimeout(() => {
+        setShakingSlot(null);
+        setAnimate(true);
+        setIndex((i) => i + 1);
+      }, SHAKE_MS);
+      timeoutsRef.current.push(shakeTimer);
+    }, HOLD_MS);
+    timeoutsRef.current.push(holdTimer);
+
+    return clear;
+  }, [index, paused, itemHeight]);
+
+  // Re-enable the transition on the next frame after an instant snap-to-0,
+  // so the *next* slide (not the snap itself) animates normally again.
+  useLayoutEffect(() => {
+    if (index === 0 && !animate) {
+      const raf = requestAnimationFrame(() => setAnimate(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    return undefined;
+  }, [index, animate]);
+
+  const doubled = [...ITEMS, ...ITEMS];
+  const step = itemHeight + GAP_PX;
+  const viewportHeight = itemHeight ? itemHeight * 4 + GAP_PX * 3 : undefined;
 
   return (
     <div
       className="h-full flex flex-col text-[#e5e7eb] border-l border-[#80609F]/30
       bg-gradient-to-b from-[#1a1626] to-[#0a0810] overflow-y-auto"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
     >
-      {/* Header */}
       <div className="p-4 flex-shrink-0 border-b border-[#80609F]/20">
-        <div className="flex items-center gap-3">
-          <svg width="44" height="44" viewBox="0 0 44 44" className="flex-shrink-0">
-            <circle
-              cx="22"
-              cy="22"
-              r={RING_RADIUS}
-              fill="none"
-              stroke="#3a2f4d"
-              strokeWidth="4"
-            />
-            <circle
-              cx="22"
-              cy="22"
-              r={RING_RADIUS}
-              fill="none"
-              stroke={ringColor}
-              strokeWidth="4"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset={ringOffset}
-              strokeLinecap="round"
-              transform="rotate(-90 22 22)"
-              className="transition-[stroke-dashoffset] duration-500 motion-reduce:transition-none"
-            />
-            <text
-              x="22"
-              y="26"
-              textAnchor="middle"
-              fontSize="13"
-              fontWeight="500"
-              fill="#e5e7eb"
-            >
-              {completedCount}/{ITEMS.length}
-            </text>
-          </svg>
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-[#e5e7eb]">Pitch rail</div>
-          </div>
-        </div>
-        <p
-          aria-live="polite"
-          className={`text-xs mt-2 ${isComplete ? "text-[#34D399]" : "text-[#FBBF24]"}`}
-        >
-          {isComplete
-            ? "All required pitches complete"
-            : `${ITEMS.length - completedCount} pitches remaining — required before closing`}
-        </p>
+        <div className="text-xl font-large text-[#e5e7eb]">Pitch rail</div>
       </div>
 
-      {/* Checklist items */}
-      <div className="p-2 flex flex-col gap-1.5">
-        {ITEMS.map((item, index) => {
-          const state = items[item.id] || DEFAULT_ITEM_STATE;
-          const isExceptionOpen = exceptionOpenFor === item.id;
-
-          return (
-            <div
-              key={item.id}
-              className="rounded-lg bg-[#1a1626] p-2.5 flex flex-col gap-2"
+      <div
+        className="p-2 overflow-hidden"
+        style={{ height: viewportHeight }}
+        tabIndex={0}
+        aria-label="Sales pitch reminders, auto-advancing. Focus or hover to pause."
+      >
+        <div
+          className="flex flex-col"
+          style={{
+            gap: `${GAP_PX}px`,
+            transform: `translateY(-${index * step}px)`,
+            transition: animate
+              ? `transform ${SLIDE_MS}ms ease-in-out`
+              : "none",
+          }}
+        >
+          {doubled.map((item, slot) => (
+            <motion.div
+              key={slot}
+              ref={slot === 0 ? measureRef : undefined}
+              animate={
+                shakingSlot === slot ? { x: [0, -3, 3, -2, 2, 0] } : { x: 0 }
+              }
+              transition={{ duration: SHAKE_MS / 1000 }}
+              className="rounded-lg bg-[#1a1626] p-2.5 flex items-start gap-2.5 flex-shrink-0"
             >
-              <div className="flex items-start gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-[#80609F] text-white text-[11px] font-medium flex items-center justify-center flex-shrink-0 mt-px">
-                  {index + 1}
+              <div className="w-7 h-7 rounded-full bg-[#80609F] flex items-center justify-center flex-shrink-0 mt-px">
+                <item.Icon />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[15.5px] font-medium text-[#e5e7eb]">
+                  {item.title}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-[#e5e7eb]">
-                    {item.title}
-                  </div>
-                  <div className="text-[11px] text-[#9CA3AF] mt-0.5">
-                    {item.subtext}
-                  </div>
-                  {state.excepted && (
-                    <div className="text-[10px] text-[#9CA3AF] mt-1 inline-flex items-center gap-1 bg-[#2a2a2e] px-1.5 py-0.5 rounded">
-                      Excepted{state.reason ? ` — ${state.reason}` : ""}
-                    </div>
-                  )}
-                  {!state.checked && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        isExceptionOpen
-                          ? cancelException()
-                          : openException(item.id, state.reason)
-                      }
-                      className="block text-[11px] text-[#80609F] hover:text-[#9d84b8] underline mt-1
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80609F] rounded"
-                    >
-                      {state.excepted
-                        ? "Change exception reason"
-                        : "Doesn't apply — log an exception"}
-                    </button>
-                  )}
-                </div>
-                <div
-                  role="checkbox"
-                  aria-checked={state.checked}
-                  aria-label={`${item.title} — ${state.checked ? "checked" : "not checked"}`}
-                  tabIndex={0}
-                  onClick={() => toggleChecked(item.id, state)}
-                  onKeyDown={(e) => handleCheckboxKeyDown(e, item.id, state)}
-                  className={`w-[18px] h-[18px] rounded flex items-center justify-center flex-shrink-0 mt-px cursor-pointer
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80609F] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1626]
-                  ${
-                    state.checked
-                      ? "bg-[#34D399]"
-                      : state.excepted
-                        ? "bg-[#6b6875]"
-                        : "border-[1.5px] border-[#6b6875]"
-                  }`}
-                >
-                  {state.checked && (
-                    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-                      <path
-                        d="M2 6l3 3 5-6"
-                        fill="none"
-                        stroke="#04342C"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                  {!state.checked && state.excepted && (
-                    <svg width="10" height="2" viewBox="0 0 10 2" aria-hidden="true">
-                      <rect width="10" height="2" fill="#1a1a1a" />
-                    </svg>
-                  )}
+                <div className="text-[12.5px] text-[#9CA3AF] mt-0.3">
+                  {item.subtext}
                 </div>
               </div>
-
-              {isExceptionOpen && (
-                <div className="pl-[30px] flex flex-col gap-1.5">
-                  <label htmlFor={`reason-${item.id}`} className="sr-only">
-                    Reason this item doesn't apply
-                  </label>
-                  <textarea
-                    id={`reason-${item.id}`}
-                    value={reasonDraft}
-                    onChange={(e) => setReasonDraft(e.target.value)}
-                    placeholder="Why doesn't this apply?"
-                    rows={2}
-                    className="w-full text-xs bg-[#0a0810] border border-[#80609F]/30 rounded p-2 text-[#e5e7eb]
-                    placeholder:text-[#6b6875] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80609F]"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => submitException(item.id)}
-                      disabled={!reasonDraft.trim()}
-                      className="text-[11px] px-2 py-1 rounded bg-[#80609F] text-white disabled:opacity-40 disabled:cursor-not-allowed
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80609F] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1626]"
-                    >
-                      Log exception
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelException}
-                      className="text-[11px] px-2 py-1 rounded text-[#9CA3AF] hover:text-[#e5e7eb]
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80609F] rounded"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );
