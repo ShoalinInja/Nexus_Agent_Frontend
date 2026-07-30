@@ -38,7 +38,7 @@ const App = () => {
             - Desktop: md:w-[22%] flex-shrink-0 → sidebar is a real flex child, takes 22% width
             - Mobile:  no width (sidebar is fixed/out-of-flow), collapses to 0 automatically
           */}
-          <div className="md:w-[22%] md:flex-shrink-0 h-full">
+          <div className="md:w-[20%] md:flex-shrink-0 h-full">
             <SideBar isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
           </div>
 
@@ -56,7 +56,7 @@ const App = () => {
 
           {/* Pitch Rail — permanent, no collapse/hide/toggle. Width clamps
               between 236px and 320px, targeting 20vw in between. */}
-          <div className="w-[20vw] min-w-[236px] max-w-[320px] flex-shrink-0 h-full">
+          <div className="w-[18vw] min-w-[236px] max-w-[320px] flex-shrink-0 h-full">
             <PitchRail />
           </div>
         </div>

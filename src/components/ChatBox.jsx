@@ -936,7 +936,7 @@ const ChatBox = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col min-h-0 m-5 md:m-10 xl:mx-28 max-md:mt-14 2xl:pr-40">
+    <div className="flex-1 flex flex-col min-h-0 m-3 md:m-5 xl:mx-14 max-md:mt-14 2xl:pr-20">
       {/* ── Requirements Navbar (animated, outside scroll area) ─────────────── */}
       <AnimatePresence>
         {!isFirstMessage &&
