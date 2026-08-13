@@ -122,6 +122,79 @@ const ClipboardPlusIcon = () => (
   </svg>
 );
 
+const CalculatorIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <rect
+      x="3"
+      y="1.5"
+      width="10"
+      height="13"
+      rx="1.2"
+      stroke="white"
+      strokeWidth="1.3"
+    />
+    <line
+      x1="5"
+      y1="4.2"
+      x2="11"
+      y2="4.2"
+      stroke="white"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <circle cx="5.3" cy="7.3" r="0.7" fill="white" />
+    <circle cx="8" cy="7.3" r="0.7" fill="white" />
+    <circle cx="10.7" cy="7.3" r="0.7" fill="white" />
+    <circle cx="5.3" cy="9.8" r="0.7" fill="white" />
+    <circle cx="8" cy="9.8" r="0.7" fill="white" />
+    <circle cx="10.7" cy="9.8" r="0.7" fill="white" />
+    <circle cx="5.3" cy="12.3" r="0.7" fill="white" />
+    <circle cx="8" cy="12.3" r="0.7" fill="white" />
+    <circle cx="10.7" cy="12.3" r="0.7" fill="white" />
+  </svg>
+);
+
+// currentColor so it can inherit the muted-text theme color of whatever
+// title/description pair it sits next to, unlike the white-on-purple icons.
+const ExternalLinkIcon = ({ className = "" }) => (
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+    className={className}
+  >
+    <path
+      d="M6.5 3.5H3.5C2.94772 3.5 2.5 3.94772 2.5 4.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5H11.5C12.0523 13.5 12.5 13.0523 12.5 12.5V9.5"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9.5 2.5H13.5V6.5"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M13.5 2.5L7 9"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // Hardcoded per spec — not admin-editable in this pass.
 const ITEMS = [
   {
@@ -147,6 +220,17 @@ const ITEMS = [
     title: "Log to potentials",
     subtext: "Lined-up but not booked? Add them to your potentials list now.",
     Icon: ClipboardPlusIcon,
+  },
+];
+
+// Data-driven so future services are one-line additions.
+const SERVICES = [
+  {
+    id: "uniflx-installment-calculator",
+    label: "UniFlx Installment Calc",
+    description: "installment calculator for bookings",
+    url: "https://installment-calculator-uniflx.vercel.app/",
+    Icon: CalculatorIcon,
   },
 ];
 
@@ -218,60 +302,105 @@ const PitchRail = () => {
 
   const doubled = [...ITEMS, ...ITEMS];
   const step = itemHeight + GAP_PX;
-  const viewportHeight = itemHeight ? itemHeight * 4 + GAP_PX * 3 : undefined;
 
   return (
     <div
-      className="h-full flex flex-col text-[#e5e7eb] border-l border-[#80609F]/30
-      bg-gradient-to-b from-[#1a1626] to-[#0a0810] overflow-y-auto"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
+      className="h-full flex flex-col text-[#1f2937] dark:text-[#e5e7eb]
+      border-l border-[#80609F]/20 dark:border-[#80609F]/30
+      bg-gradient-to-b from-[#faf8fd] to-[#f3eff9] dark:from-[#1a1626] dark:to-[#0a0810]"
     >
-      <div className="p-4 flex-shrink-0 border-b border-[#80609F]/20">
-        <div className="text-xl font-large text-[#e5e7eb]">Pitch rail</div>
+      {/* Top half — Pitch Rail */}
+      <div
+        className="flex-1 min-h-0 flex flex-col"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocus={() => setPaused(true)}
+        onBlur={() => setPaused(false)}
+      >
+        <div className="p-4 flex-shrink-0 border-b border-[#80609F]/15 dark:border-[#80609F]/20">
+          <div className="text-xl font-large text-[#1f2937] dark:text-[#e5e7eb]">
+            Pitch rail
+          </div>
+        </div>
+
+        <div
+          className="p-2 flex-1 min-h-0 overflow-hidden"
+          tabIndex={0}
+          aria-label="Sales pitch reminders, auto-advancing. Focus or hover to pause."
+        >
+          <div
+            className="flex flex-col"
+            style={{
+              gap: `${GAP_PX}px`,
+              transform: `translateY(-${index * step}px)`,
+              transition: animate
+                ? `transform ${SLIDE_MS}ms ease-in-out`
+                : "none",
+            }}
+          >
+            {doubled.map((item, slot) => (
+              <motion.div
+                key={slot}
+                ref={slot === 0 ? measureRef : undefined}
+                animate={
+                  shakingSlot === slot ? { x: [0, -3, 3, -2, 2, 0] } : { x: 0 }
+                }
+                transition={{ duration: SHAKE_MS / 1000 }}
+                className="rounded-lg bg-white dark:bg-[#1a1626] border border-[#80609F]/15 dark:border-transparent p-2.5 flex items-start gap-2.5 flex-shrink-0"
+              >
+                <div className="w-7 h-7 rounded-full bg-[#80609F] flex items-center justify-center flex-shrink-0 mt-px">
+                  <item.Icon />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[15.5px] font-medium text-[#1f2937] dark:text-[#e5e7eb]">
+                    {item.title}
+                  </div>
+                  <div className="text-[12.5px] text-[#6B7280] dark:text-[#9CA3AF] mt-0.3">
+                    {item.subtext}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div
-        className="p-2 overflow-hidden"
-        style={{ height: viewportHeight }}
-        tabIndex={0}
-        aria-label="Sales pitch reminders, auto-advancing. Focus or hover to pause."
-      >
-        <div
-          className="flex flex-col"
-          style={{
-            gap: `${GAP_PX}px`,
-            transform: `translateY(-${index * step}px)`,
-            transition: animate
-              ? `transform ${SLIDE_MS}ms ease-in-out`
-              : "none",
-          }}
-        >
-          {doubled.map((item, slot) => (
-            <motion.div
-              key={slot}
-              ref={slot === 0 ? measureRef : undefined}
-              animate={
-                shakingSlot === slot ? { x: [0, -3, 3, -2, 2, 0] } : { x: 0 }
-              }
-              transition={{ duration: SHAKE_MS / 1000 }}
-              className="rounded-lg bg-[#1a1626] p-2.5 flex items-start gap-2.5 flex-shrink-0"
-            >
-              <div className="w-7 h-7 rounded-full bg-[#80609F] flex items-center justify-center flex-shrink-0 mt-px">
-                <item.Icon />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[15.5px] font-medium text-[#e5e7eb]">
-                  {item.title}
+      {/* Bottom half — Services */}
+      <div className="flex-1 min-h-0 flex flex-col border-t border-[#80609F]/15 dark:border-[#80609F]/20">
+        <div className="p-4 flex-shrink-0 border-b border-[#80609F]/15 dark:border-[#80609F]/20">
+          <div className="text-xl font-large text-[#1f2937] dark:text-[#e5e7eb]">
+            Services
+          </div>
+        </div>
+
+        <div className="p-2 flex-1 min-h-0 overflow-y-hidden">
+          <div className="flex flex-col" style={{ gap: `${GAP_PX}px` }}>
+            {SERVICES.map((service) => (
+              <a
+                key={service.id}
+                href={service.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${service.label} in a new tab`}
+                className="group rounded-lg bg-white dark:bg-[#1a1626] border border-[#80609F]/15 dark:border-transparent p-2.5 flex items-start gap-2.5 flex-shrink-0 hover:bg-[#f3eff9] dark:hover:bg-[#241d33] transition-colors"
+              >
+                <div className="w-7 h-7 rounded-full bg-[#80609F] flex items-center justify-center flex-shrink-0 mt-px">
+                  <service.Icon />
                 </div>
-                <div className="text-[12.5px] text-[#9CA3AF] mt-0.3">
-                  {item.subtext}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-[15.5px] font-medium text-[#1f2937] dark:text-[#e5e7eb] truncate">
+                      {service.label}
+                    </div>
+                    <ExternalLinkIcon className="flex-shrink-0 text-[#6B7280] dark:text-[#9CA3AF] opacity-60 group-hover:opacity-100" />
+                  </div>
+                  <div className="text-[12.5px] text-[#6B7280] dark:text-[#9CA3AF] mt-0.3">
+                    {service.description}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </div>
