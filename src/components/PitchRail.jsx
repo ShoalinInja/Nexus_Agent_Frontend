@@ -160,6 +160,83 @@ const CalculatorIcon = () => (
   </svg>
 );
 
+const FormIcon = () => (
+  <svg
+    width="512"
+    height="512"
+    viewBox="0 0 512 512"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M38 151V22C38 12 46 4 57 4H455C465 4 473 12 473 22V425C473 435 466 443 457 445"
+      stroke="currentColor"
+      stroke-width="16"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <path
+      d="M38 175V449C38 459 46 468 57 468H295"
+      stroke="currentColor"
+      stroke-width="16"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <path d="M38 90H473" stroke="currentColor" stroke-width="16" />
+
+    <circle cx="122" cy="44" r="15" stroke="currentColor" stroke-width="16" />
+    <circle cx="203" cy="44" r="15" stroke="currentColor" stroke-width="16" />
+    <circle cx="284" cy="44" r="15" stroke="currentColor" stroke-width="16" />
+
+    <path
+      d="M182 132H330"
+      stroke="currentColor"
+      stroke-width="16"
+      stroke-linecap="round"
+    />
+
+    <rect
+      x="145"
+      y="193"
+      width="274"
+      height="43"
+      rx="12"
+      stroke="currentColor"
+      stroke-width="16"
+    />
+
+    <rect
+      x="145"
+      y="299"
+      width="274"
+      height="43"
+      rx="12"
+      stroke="currentColor"
+      stroke-width="16"
+    />
+
+    <rect
+      x="253"
+      y="390"
+      width="91"
+      height="43"
+      rx="22"
+      stroke="currentColor"
+      stroke-width="16"
+    />
+
+    <path
+      d="M396 390L478 437C483 440 483 447 478 450L454 464L477 502C480 507 478 513 473 516L453 528C448 531 442 529 439 524L417 486L394 503C389 507 381 503 381 496V399C381 392 390 386 396 390Z"
+      stroke="currentColor"
+      stroke-width="16"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+);
+
 // currentColor so it can inherit the muted-text theme color of whatever
 // title/description pair it sits next to, unlike the white-on-purple icons.
 const ExternalLinkIcon = ({ className = "" }) => (
@@ -231,6 +308,13 @@ const SERVICES = [
     description: "installment calculator for bookings",
     url: "https://installment-calculator-uniflx.vercel.app/",
     Icon: CalculatorIcon,
+  },
+  {
+    id: "uniacco-refund-form,",
+    label: "Uniacco Refund Form",
+    description: "Form for Uniacco Refund requests",
+    url: "https://refunds.uniacco.com/",
+    Icon: FormIcon,
   },
 ];
 
