@@ -280,13 +280,6 @@ const SERVICES = [
     Icon: FormIcon,
   },
   {
-    id: "uniflix-invoice-form,",
-    label: "Uniflix Invoice Form",
-    description: "Form for Uniflix Invoice requests",
-    url: "https://invoicegen-kohl.vercel.app/",
-    Icon: FormIcon,
-  },
-  {
     id: "uniflx-installment-calculator",
     label: "UniFlx Installment Calc",
     description: "installment calculator for bookings",
