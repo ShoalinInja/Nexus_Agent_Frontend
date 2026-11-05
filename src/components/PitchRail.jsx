@@ -162,9 +162,9 @@ const CalculatorIcon = () => (
 
 const FormIcon = () => (
   <svg
-    width="512"
-    height="512"
-    viewBox="0 0 512 512"
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
@@ -303,18 +303,25 @@ const ITEMS = [
 // Data-driven so future services are one-line additions.
 const SERVICES = [
   {
-    id: "uniflx-installment-calculator",
-    label: "UniFlx Installment Calc",
-    description: "installment calculator for bookings",
-    url: "https://installment-calculator-uniflx.vercel.app/",
-    Icon: CalculatorIcon,
-  },
-  {
     id: "uniacco-refund-form,",
     label: "Uniacco Refund Form",
     description: "Form for Uniacco Refund requests",
     url: "https://refunds.uniacco.com/",
     Icon: FormIcon,
+  },
+  {
+    id: "uniflix-invoice-form,",
+    label: "Uniflix Invoice Form",
+    description: "Form for Uniflix Invoice requests",
+    url: "https://invoicegen-kohl.vercel.app/",
+    Icon: FormIcon,
+  },
+  {
+    id: "uniflx-installment-calculator",
+    label: "UniFlx Installment Calc",
+    description: "installment calculator for bookings",
+    url: "https://installment-calculator-uniflx.vercel.app/",
+    Icon: CalculatorIcon,
   },
 ];
 
