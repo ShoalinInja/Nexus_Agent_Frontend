@@ -168,71 +168,41 @@ const FormIcon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path
-      d="M38 151V22C38 12 46 4 57 4H455C465 4 473 12 473 22V425C473 435 466 443 457 445"
-      stroke="currentColor"
-      stroke-width="16"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-
-    <path
-      d="M38 175V449C38 459 46 468 57 468H295"
-      stroke="currentColor"
-      stroke-width="16"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-
-    <path d="M38 90H473" stroke="currentColor" stroke-width="16" />
-
-    <circle cx="122" cy="44" r="15" stroke="currentColor" stroke-width="16" />
-    <circle cx="203" cy="44" r="15" stroke="currentColor" stroke-width="16" />
-    <circle cx="284" cy="44" r="15" stroke="currentColor" stroke-width="16" />
-
-    <path
-      d="M182 132H330"
-      stroke="currentColor"
-      stroke-width="16"
-      stroke-linecap="round"
-    />
-
     <rect
-      x="145"
-      y="193"
-      width="274"
-      height="43"
-      rx="12"
-      stroke="currentColor"
-      stroke-width="16"
+      x="1"
+      y="1"
+      width="14"
+      height="14"
+      rx="1.5"
+      stroke="white"
+      stroke-width="1.2"
     />
-
+    <path d="M1 4H15" stroke="white" stroke-width="1.2" />
+    <circle cx="3" cy="2.5" r="0.4" fill="white" />
+    <circle cx="4.5" cy="2.5" r="0.4" fill="white" />
+    <circle cx="6" cy="2.5" r="0.4" fill="white" />
+    <path d="M5 6H11" stroke="white" stroke-width="1" stroke-linecap="round" />
     <rect
-      x="145"
-      y="299"
-      width="274"
-      height="43"
-      rx="12"
-      stroke="currentColor"
-      stroke-width="16"
+      x="4"
+      y="7.5"
+      width="8"
+      height="2"
+      rx="0.5"
+      stroke="white"
+      stroke-width="0.8"
     />
-
     <rect
-      x="253"
-      y="390"
-      width="91"
-      height="43"
-      rx="22"
-      stroke="currentColor"
-      stroke-width="16"
+      x="4"
+      y="10.5"
+      width="8"
+      height="2"
+      rx="0.5"
+      stroke="white"
+      stroke-width="0.8"
     />
-
     <path
-      d="M396 390L478 437C483 440 483 447 478 450L454 464L477 502C480 507 478 513 473 516L453 528C448 531 442 529 439 524L417 486L394 503C389 507 381 503 381 496V399C381 392 390 386 396 390Z"
-      stroke="currentColor"
-      stroke-width="16"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      d="M11 11.5L14 13.5L12.8 14L13.5 15L12.5 15.5L11.8 14.3L11 15V11.5Z"
+      fill="white"
     />
   </svg>
 );
